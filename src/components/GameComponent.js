@@ -78,27 +78,42 @@ class GameScene extends Phaser.Scene {
         }
 
         if (emptySpots.length > 0) {
-            // Sort empty spots by distance to generator
             emptySpots.sort((a, b) => a.distance - b.distance);
-            
-            // Choose one of the 3 closest spots randomly
             const closestSpots = emptySpots.slice(0, Math.min(3, emptySpots.length));
             const spot = Phaser.Math.RND.pick(closestSpots);
 
+            // Mark the spot as occupied immediately
+            this.gridOccupancy[spot.y][spot.x] = true;
+
             const itemX = startX + spot.x * (cellSize + margin) + cellSize / 2;
             const itemY = startY + spot.y * (cellSize + margin) + cellSize / 2;
-            const item = this.add.image(itemX, itemY, 'level1');
-            item.setDisplaySize(cellSize, cellSize); // Removed 0.95 scaling
+
+            // Create the item at the generator's position
+            const generatorCenterX = startX + generatorX * (cellSize + margin) + cellSize / 2;
+            const generatorCenterY = startY + generatorY * (cellSize + margin) + cellSize / 2;
+            const item = this.add.image(generatorCenterX, generatorCenterY, 'level1');
+
+            item.setDisplaySize(cellSize, cellSize);
             item.setInteractive({ draggable: true });
             item.level = 1;
             item.gridX = spot.x;
             item.gridY = spot.y;
-            this.gridItems[spot.y][spot.x] = item;
-            this.gridOccupancy[spot.y][spot.x] = true;
 
-            this.energy--; // Decrease energy
+            // Create motion animation tween
+            this.tweens.add({
+                targets: item,
+                x: itemX,
+                y: itemY,
+                duration: 300,
+                ease: 'Cubic.easeOut',
+                onComplete: () => {
+                    this.gridItems[spot.y][spot.x] = item;
+                }
+            });
+
+            this.energy--;
             if (this.game.react) {
-                this.game.react.updateEnergy(this.energy); // Pass the energy value
+                this.game.react.updateEnergy(this.energy);
             }
         }
     }
@@ -225,7 +240,8 @@ const GameComponent = ({ onEnergyChange }) => {
     return (
         <div id="phaser-game" style={{
             width: '1000px', 
-            height: '800px',
+            height: '800px', 
+            border: '1px solid black',
         }}></div>
     );
 };
