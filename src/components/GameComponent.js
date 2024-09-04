@@ -15,6 +15,9 @@ class GameScene extends Phaser.Scene {
         for (let i = 1; i <= 5; i++) {
             this.load.image(`level${i}`, `assets/level${i}.png`);
         }
+        this.load.audio('mergeSound', 'assets/merge.mp3');
+        this.load.audio('spawnSound', 'assets/spawn.mp3'); // Add this line
+        this.load.audio('backgroundMusic', 'assets/background_music.mp3'); // Add this line
     }
 
     create() {
@@ -58,6 +61,10 @@ class GameScene extends Phaser.Scene {
         this.input.on('dragstart', this.onDragStart, this);
         this.input.on('drag', this.onDrag, this);
         this.input.on('dragend', this.onDragEnd, this);
+
+        // Add background music
+        this.backgroundMusic = this.sound.add('backgroundMusic', { loop: true, volume: 0.5 });
+        this.backgroundMusic.play();
     }
 
     spawnItem() {
@@ -78,6 +85,9 @@ class GameScene extends Phaser.Scene {
         }
 
         if (emptySpots.length > 0) {
+            // Play spawn sound
+            this.sound.play('spawnSound');
+
             emptySpots.sort((a, b) => a.distance - b.distance);
             const closestSpots = emptySpots.slice(0, Math.min(3, emptySpots.length));
             const spot = Phaser.Math.RND.pick(closestSpots);
@@ -166,6 +176,9 @@ class GameScene extends Phaser.Scene {
     }
 
     mergeItems(item1, item2) {
+        // Play merge sound
+        this.sound.play('mergeSound');
+
         const newLevel = item1.level + 1;
         if (newLevel <= 5) {
             // Use the position of item2 (the stationary item) for merging
@@ -211,7 +224,7 @@ const GameComponent = ({ onEnergyChange }) => {
     useEffect(() => {
         const config = {
             type: Phaser.AUTO,
-            width: 1000,
+            width: 700,
             height: 800,
             scene: GameScene,
             parent: 'phaser-game',
@@ -238,11 +251,7 @@ const GameComponent = ({ onEnergyChange }) => {
     }, [onEnergyChange]);
 
     return (
-        <div id="phaser-game" style={{
-            width: '1000px', 
-            height: '800px', 
-            border: '1px solid black',
-        }}></div>
+        <div id="phaser-game"></div>
     );
 };
 

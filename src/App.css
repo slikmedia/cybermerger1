@@ -5,15 +5,9 @@
   padding: 20px;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.energy-display {
+  font-size: 24px;
+  color: white;
 }
 
 .App-header {
@@ -37,8 +31,9 @@
 }
 
 #phaser-game {
-  width: 1000px;
-  height: 800px;
+  width: 100%;
+  height: 100%;
+  text-align: center;
 }
 
 @keyframes App-logo-spin {
