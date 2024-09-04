@@ -24,19 +24,18 @@ class GameScene extends Phaser.Scene {
         const gridWidth = 9;
         const gridHeight = 11;
         const cellSize = 70;
-        const margin = 1;
-        const effectiveCellSize = cellSize - 2 * margin;
+        const effectiveCellSize = cellSize - 2 * 1;
         const startX = (this.sys.game.config.width - gridWidth * cellSize) / 2;
         const startY = (this.sys.game.config.height - gridHeight * cellSize) / 2;
 
-        this.gridInfo = { startX, startY, gridWidth, gridHeight, cellSize, margin };
+        this.gridInfo = { startX, startY, gridWidth, gridHeight, cellSize };
         this.gridOccupancy = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill(false));
         this.gridItems = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill(null));
 
         for (let y = 0; y < gridHeight; y++) {
             for (let x = 0; x < gridWidth; x++) {
-                const cellX = startX + x * cellSize + margin;
-                const cellY = startY + y * cellSize + margin;
+                const cellX = startX + x * cellSize + 1;
+                const cellY = startY + y * cellSize + 1;
                 const cell = this.add.rectangle(cellX, cellY, effectiveCellSize, effectiveCellSize, 0x000000);
                 cell.setOrigin(0, 0);
                 cell.setAlpha(0.3);
@@ -68,7 +67,7 @@ class GameScene extends Phaser.Scene {
     spawnItem() {
         if (this.energy <= 0 || this.isGeneratorDragging || this.generatorMoved) return;
 
-        const { startX, startY, gridWidth, gridHeight, cellSize, margin } = this.gridInfo;
+        const { startX, startY, gridWidth, gridHeight, cellSize } = this.gridInfo;
         const emptySpots = [];
         const generatorX = this.generator.gridX;
         const generatorY = this.generator.gridY;
@@ -174,7 +173,7 @@ class GameScene extends Phaser.Scene {
     }
 
     moveGenerator(generator, newPos) {
-        const { startX, startY, cellSize, margin } = this.gridInfo;
+        const { startX, startY, cellSize } = this.gridInfo;
         this.gridItems[generator.gridY][generator.gridX] = null;
         this.gridOccupancy[generator.gridY][generator.gridX] = false;
         this.gridItems[newPos.y][newPos.x] = 'generator';
@@ -186,13 +185,13 @@ class GameScene extends Phaser.Scene {
     }
 
     resetPosition(item) {
-        const { startX, startY, cellSize, margin } = this.gridInfo;
+        const { startX, startY, cellSize } = this.gridInfo;
         item.x = startX + item.gridX * cellSize + cellSize / 2;
         item.y = startY + item.gridY * cellSize + cellSize / 2;
     }
 
     moveItem(item, newPos) {
-        const { startX, startY, cellSize, margin } = this.gridInfo;
+        const { startX, startY, cellSize } = this.gridInfo;
         this.gridItems[item.gridY][item.gridX] = null;
         this.gridOccupancy[item.gridY][item.gridX] = false;
         this.gridItems[newPos.y][newPos.x] = item;
@@ -210,7 +209,7 @@ class GameScene extends Phaser.Scene {
         if (newLevel <= 5) {
             const mergePos = { x: item2.gridX, y: item2.gridY };
             
-            const { startX, startY, cellSize, margin } = this.gridInfo;
+            const { startX, startY, cellSize } = this.gridInfo;
             const newItemX = startX + mergePos.x * cellSize + cellSize / 2;
             const newItemY = startY + mergePos.y * cellSize + cellSize / 2;
 
@@ -232,6 +231,10 @@ class GameScene extends Phaser.Scene {
             // Update quest progress after merging
             if (this.game.react) {
                 this.game.react.updateQuestProgress(newLevel);
+                // Refresh all quest progress
+                setTimeout(() => {
+                    this.updateAllQuestProgress();
+                }, 0);
             }
         } else {
             this.resetPosition(item1);
@@ -239,7 +242,7 @@ class GameScene extends Phaser.Scene {
     }
 
     getGridPosition(item) {
-        const { startX, startY, cellSize, margin } = this.gridInfo;
+        const { startX, startY, cellSize } = this.gridInfo;
         const gridX = Math.floor((item.x - startX) / cellSize);
         const gridY = Math.floor((item.y - startY) / cellSize);
         return { x: gridX, y: gridY };
@@ -353,7 +356,7 @@ const GameComponent = () => {
         });
     };
 
-    const updateAllQuestProgress = (itemCounts) => {
+    const updateAllQuestProgress = (itemCounts = {}) => {
         setQuests(prevQuests => prevQuests.map(quest => ({
             ...quest,
             requirements: quest.requirements.map(req => ({
@@ -370,7 +373,7 @@ const GameComponent = () => {
     useEffect(() => {
         const config = {
             type: Phaser.AUTO,
-            width: 700,
+            width: 650,
             height: 800,
             scene: GameScene,
             parent: 'phaser-game',
