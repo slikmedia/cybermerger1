@@ -5,6 +5,10 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
+// Set the background image dynamically
+document.body.style.backgroundImage = `url(${process.env.PUBLIC_URL}/assets/background.png)`;
+
 root.render(
   <React.StrictMode>
     <App />
