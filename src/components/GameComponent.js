@@ -7,6 +7,8 @@ class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
         this.energy = 100; // Initialize energy
+        this.isGeneratorDragging = false; // Add this line
+        this.generatorMoved = false; // Add this line
     }
 
     preload() {
@@ -17,7 +19,7 @@ class GameScene extends Phaser.Scene {
         }
         this.load.audio('mergeSound', 'assets/merge.mp3');
         this.load.audio('spawnSound', 'assets/spawn.mp3'); // Add this line
-        this.load.audio('backgroundMusic', 'assets/background_music.mp3'); // Add this line
+        this.load.audio('backgroundMusic', 'assets/background_music.mp3'); // Add this line 
     }
 
     create() {
@@ -25,7 +27,7 @@ class GameScene extends Phaser.Scene {
         const gridWidth = 9;  // Increased from 7
         const gridHeight = 11;  // Increased from 9
         const cellSize = 70;  // Increased from 60
-        const margin = 1;
+        const margin = 1;  // Adjust this value to change the grid margin
         const effectiveCellSize = cellSize - 2 * margin;
         const startX = (this.sys.game.config.width - gridWidth * cellSize) / 2;
         const startY = (this.sys.game.config.height - gridHeight * cellSize) / 2;
@@ -49,15 +51,18 @@ class GameScene extends Phaser.Scene {
         const centerY = startY + Math.floor(gridHeight / 2) * cellSize + cellSize / 2;
         const generator = this.add.image(centerX, centerY, 'generator');
         generator.setDisplaySize(effectiveCellSize, effectiveCellSize); // Removed 0.95 scaling
-        generator.setInteractive();
+        generator.setInteractive({ draggable: true }); // Make generator draggable
         generator.on('pointerup', this.spawnItem, this); // Changed from 'pointerdown' to 'pointerup'
 
         // Mark the generator's position as occupied
-        const generatorGridX = Math.floor(gridWidth / 2);
-        const generatorGridY = Math.floor(gridHeight / 2);
-        this.gridItems[generatorGridY][generatorGridX] = 'generator';
-        this.gridOccupancy[generatorGridY][generatorGridX] = true;
+        this.generator = generator; // Store reference to generator
+        this.generator.gridX = Math.floor(gridWidth / 2);
+        this.generator.gridY = Math.floor(gridHeight / 2);
+        this.gridItems[this.generator.gridY][this.generator.gridX] = 'generator';
+        this.gridOccupancy[this.generator.gridY][this.generator.gridX] = true;
 
+        // Add drag events for the generator
+        this.input.setDraggable(generator);
         this.input.on('dragstart', this.onDragStart, this);
         this.input.on('drag', this.onDrag, this);
         this.input.on('dragend', this.onDragEnd, this);
@@ -68,12 +73,12 @@ class GameScene extends Phaser.Scene {
     }
 
     spawnItem() {
-        if (this.energy <= 0) return; // Prevent spawning if no energy
+        if (this.energy <= 0 || this.isGeneratorDragging || this.generatorMoved) return; // Modified this line
 
         const { startX, startY, gridWidth, gridHeight, cellSize, margin } = this.gridInfo;
         const emptySpots = [];
-        const generatorX = Math.floor(gridWidth / 2);
-        const generatorY = Math.floor(gridHeight / 2);
+        const generatorX = this.generator.gridX;
+        const generatorY = this.generator.gridY;
 
         for (let y = 0; y < gridHeight; y++) {
             for (let x = 0; x < gridWidth; x++) {
@@ -95,12 +100,12 @@ class GameScene extends Phaser.Scene {
             // Mark the spot as occupied immediately
             this.gridOccupancy[spot.y][spot.x] = true;
 
-            const itemX = startX + spot.x * (cellSize + margin) + cellSize / 2;
-            const itemY = startY + spot.y * (cellSize + margin) + cellSize / 2;
+            const itemX = startX + spot.x * cellSize + cellSize / 2;
+            const itemY = startY + spot.y * cellSize + cellSize / 2;
 
             // Create the item at the generator's position
-            const generatorCenterX = startX + generatorX * (cellSize + margin) + cellSize / 2;
-            const generatorCenterY = startY + generatorY * (cellSize + margin) + cellSize / 2;
+            const generatorCenterX = startX + generatorX * cellSize + cellSize / 2;
+            const generatorCenterY = startY + generatorY * cellSize + cellSize / 2;
             const item = this.add.image(generatorCenterX, generatorCenterY, 'level1');
 
             item.setDisplaySize(cellSize, cellSize);
@@ -130,37 +135,67 @@ class GameScene extends Phaser.Scene {
 
     onDragStart(pointer, gameObject) {
         this.children.bringToTop(gameObject);
+        if (gameObject === this.generator) {
+            this.isGeneratorDragging = true; // Add this line
+            this.generatorMoved = false; // Reset this flag on drag start
+        }
     }
 
     onDrag(pointer, gameObject, dragX, dragY) {
         gameObject.x = dragX;
         gameObject.y = dragY;
+        if (gameObject === this.generator) {
+            this.generatorMoved = true; // Set this flag if the generator is moved
+        }
     }
 
     onDragEnd(pointer, gameObject) {
         const dropPos = this.getGridPosition(gameObject);
         const startPos = { x: gameObject.gridX, y: gameObject.gridY };
 
-        if (dropPos.x === startPos.x && dropPos.y === startPos.y) {
-            this.resetPosition(gameObject);
-        } else if (this.gridItems[dropPos.y][dropPos.x]) {
-            const otherItem = this.gridItems[dropPos.y][dropPos.x];
-            if (otherItem !== 'generator' && gameObject.level === otherItem.level) {
-                this.mergeItems(gameObject, otherItem);
+        if (gameObject === this.generator) {
+            // Handle generator drop
+            if (!this.gridOccupancy[dropPos.y][dropPos.x]) {
+                this.moveGenerator(gameObject, dropPos);
             } else {
                 this.resetPosition(gameObject);
             }
-        } else if (!this.gridOccupancy[dropPos.y][dropPos.x]) {
-            this.moveItem(gameObject, dropPos);
+            this.isGeneratorDragging = false; // Add this line
         } else {
-            this.resetPosition(gameObject);
+            // Handle item drop
+            if (dropPos.x === startPos.x && dropPos.y === startPos.y) {
+                this.resetPosition(gameObject);
+            } else if (this.gridItems[dropPos.y][dropPos.x]) {
+                const otherItem = this.gridItems[dropPos.y][dropPos.x];
+                if (otherItem !== 'generator' && gameObject.level === otherItem.level) {
+                    this.mergeItems(gameObject, otherItem);
+                } else {
+                    this.resetPosition(gameObject);
+                }
+            } else if (!this.gridOccupancy[dropPos.y][dropPos.x]) {
+                this.moveItem(gameObject, dropPos);
+            } else {
+                this.resetPosition(gameObject);
+            }
         }
+    }
+
+    moveGenerator(generator, newPos) {
+        const { startX, startY, cellSize, margin } = this.gridInfo;
+        this.gridItems[generator.gridY][generator.gridX] = null;
+        this.gridOccupancy[generator.gridY][generator.gridX] = false;
+        this.gridItems[newPos.y][newPos.x] = 'generator';
+        this.gridOccupancy[newPos.y][newPos.x] = true;
+        generator.gridX = newPos.x;
+        generator.gridY = newPos.y;
+        generator.x = startX + newPos.x * cellSize + cellSize / 2;
+        generator.y = startY + newPos.y * cellSize + cellSize / 2;
     }
 
     resetPosition(item) {
         const { startX, startY, cellSize, margin } = this.gridInfo;
-        item.x = startX + item.gridX * (cellSize + margin) + cellSize / 2;
-        item.y = startY + item.gridY * (cellSize + margin) + cellSize / 2;
+        item.x = startX + item.gridX * cellSize + cellSize / 2;
+        item.y = startY + item.gridY * cellSize + cellSize / 2;
     }
 
     moveItem(item, newPos) {
@@ -171,8 +206,8 @@ class GameScene extends Phaser.Scene {
         this.gridOccupancy[newPos.y][newPos.x] = true;
         item.gridX = newPos.x;
         item.gridY = newPos.y;
-        item.x = startX + newPos.x * (cellSize + margin) + cellSize / 2;
-        item.y = startY + newPos.y * (cellSize + margin) + cellSize / 2;
+        item.x = startX + newPos.x * cellSize + cellSize / 2;
+        item.y = startY + newPos.y * cellSize + cellSize / 2;
     }
 
     mergeItems(item1, item2) {
@@ -186,8 +221,8 @@ class GameScene extends Phaser.Scene {
             
             // Calculate the centered position for the new item
             const { startX, startY, cellSize, margin } = this.gridInfo;
-            const newItemX = startX + mergePos.x * (cellSize + margin) + cellSize / 2;
-            const newItemY = startY + mergePos.y * (cellSize + margin) + cellSize / 2;
+            const newItemX = startX + mergePos.x * cellSize + cellSize / 2;
+            const newItemY = startY + mergePos.y * cellSize + cellSize / 2;
 
             // Create new item at the calculated centered position
             const newItem = this.add.image(newItemX, newItemY, `level${newLevel}`);
@@ -212,8 +247,8 @@ class GameScene extends Phaser.Scene {
 
     getGridPosition(item) {
         const { startX, startY, cellSize, margin } = this.gridInfo;
-        const gridX = Math.floor((item.x - startX) / (cellSize + margin));
-        const gridY = Math.floor((item.y - startY) / (cellSize + margin));
+        const gridX = Math.floor((item.x - startX) / cellSize);
+        const gridY = Math.floor((item.y - startY) / cellSize);
         return { x: gridX, y: gridY };
     }
 }
