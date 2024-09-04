@@ -1,5 +1,4 @@
-// src/components/GameComponent.js
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 // Remove the GameUI import as it's not used here
 
@@ -253,8 +252,9 @@ class GameScene extends Phaser.Scene {
     }
 }
 
-const GameComponent = ({ onEnergyChange }) => {
+const GameComponent = ({ onEnergyChange, onCoinChange }) => {
     const gameRef = useRef(null);
+    const [coins, setCoins] = useState(0); // Add state for coins
 
     useEffect(() => {
         const config = {
@@ -270,7 +270,11 @@ const GameComponent = ({ onEnergyChange }) => {
             const game = new Phaser.Game(config);
             gameRef.current = game;
             game.react = {
-                updateEnergy: (newEnergy) => onEnergyChange(newEnergy)
+                updateEnergy: (newEnergy) => onEnergyChange(newEnergy),
+                updateCoins: (newCoins) => {
+                    onCoinChange(newCoins);
+                    setCoins(newCoins); // Update coin state
+                }
             };
             console.log('Phaser game initialized');
         } catch (error) {
@@ -283,10 +287,15 @@ const GameComponent = ({ onEnergyChange }) => {
                 console.log('Phaser game destroyed');
             }
         };
-    }, [onEnergyChange]);
+    }, [onEnergyChange, onCoinChange]);
 
     return (
-        <div id="phaser-game"></div>
+        <div>
+            <div id="phaser-game"></div>
+            <div style={{ position: 'absolute', top: 20, right: 20, color: '#fff' }}>
+                Coins: {coins} {/* Display coins */}
+            </div>
+        </div>
     );
 };
 
