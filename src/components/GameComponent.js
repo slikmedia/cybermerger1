@@ -1,32 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
-// Remove the GameUI import as it's not used here
+import QuestPanel from './QuestPanel';
 
 class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
-        this.energy = 100; // Initialize energy
-        this.isGeneratorDragging = false; // Add this line
-        this.generatorMoved = false; // Add this line
+        this.energy = 100;
+        this.isGeneratorDragging = false;
+        this.generatorMoved = false;
     }
 
     preload() {
-        // Remove background loading
         this.load.image('generator', 'assets/generator.png');
         for (let i = 1; i <= 5; i++) {
             this.load.image(`level${i}`, `assets/level${i}.png`);
         }
         this.load.audio('mergeSound', 'assets/merge.mp3');
-        this.load.audio('spawnSound', 'assets/spawn.mp3'); // Add this line
-        this.load.audio('backgroundMusic', 'assets/background_music.mp3'); // Add this line 
+        this.load.audio('spawnSound', 'assets/spawn.mp3');
+        this.load.audio('backgroundMusic', 'assets/background_music.mp3');
     }
 
     create() {
-        // Remove background image creation
-        const gridWidth = 9;  // Increased from 7
-        const gridHeight = 11;  // Increased from 9
-        const cellSize = 70;  // Increased from 60
-        const margin = 1;  // Adjust this value to change the grid margin
+        const gridWidth = 9;
+        const gridHeight = 11;
+        const cellSize = 70;
+        const margin = 1;
         const effectiveCellSize = cellSize - 2 * margin;
         const startX = (this.sys.game.config.width - gridWidth * cellSize) / 2;
         const startY = (this.sys.game.config.height - gridHeight * cellSize) / 2;
@@ -35,7 +33,6 @@ class GameScene extends Phaser.Scene {
         this.gridOccupancy = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill(false));
         this.gridItems = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill(null));
 
-        // Create black cells with 30% opacity and 1px margin
         for (let y = 0; y < gridHeight; y++) {
             for (let x = 0; x < gridWidth; x++) {
                 const cellX = startX + x * cellSize + margin;
@@ -49,30 +46,27 @@ class GameScene extends Phaser.Scene {
         const centerX = startX + Math.floor(gridWidth / 2) * cellSize + cellSize / 2;
         const centerY = startY + Math.floor(gridHeight / 2) * cellSize + cellSize / 2;
         const generator = this.add.image(centerX, centerY, 'generator');
-        generator.setDisplaySize(effectiveCellSize, effectiveCellSize); // Removed 0.95 scaling
-        generator.setInteractive({ draggable: true }); // Make generator draggable
-        generator.on('pointerup', this.spawnItem, this); // Changed from 'pointerdown' to 'pointerup'
+        generator.setDisplaySize(effectiveCellSize, effectiveCellSize);
+        generator.setInteractive({ draggable: true });
+        generator.on('pointerup', this.spawnItem, this);
 
-        // Mark the generator's position as occupied
-        this.generator = generator; // Store reference to generator
+        this.generator = generator;
         this.generator.gridX = Math.floor(gridWidth / 2);
         this.generator.gridY = Math.floor(gridHeight / 2);
         this.gridItems[this.generator.gridY][this.generator.gridX] = 'generator';
         this.gridOccupancy[this.generator.gridY][this.generator.gridX] = true;
 
-        // Add drag events for the generator
         this.input.setDraggable(generator);
         this.input.on('dragstart', this.onDragStart, this);
         this.input.on('drag', this.onDrag, this);
         this.input.on('dragend', this.onDragEnd, this);
 
-        // Add background music
         this.backgroundMusic = this.sound.add('backgroundMusic', { loop: true, volume: 0.5 });
         this.backgroundMusic.play();
     }
 
     spawnItem() {
-        if (this.energy <= 0 || this.isGeneratorDragging || this.generatorMoved) return; // Modified this line
+        if (this.energy <= 0 || this.isGeneratorDragging || this.generatorMoved) return;
 
         const { startX, startY, gridWidth, gridHeight, cellSize, margin } = this.gridInfo;
         const emptySpots = [];
@@ -89,20 +83,17 @@ class GameScene extends Phaser.Scene {
         }
 
         if (emptySpots.length > 0) {
-            // Play spawn sound
             this.sound.play('spawnSound');
 
             emptySpots.sort((a, b) => a.distance - b.distance);
             const closestSpots = emptySpots.slice(0, Math.min(3, emptySpots.length));
             const spot = Phaser.Math.RND.pick(closestSpots);
 
-            // Mark the spot as occupied immediately
             this.gridOccupancy[spot.y][spot.x] = true;
 
             const itemX = startX + spot.x * cellSize + cellSize / 2;
             const itemY = startY + spot.y * cellSize + cellSize / 2;
 
-            // Create the item at the generator's position
             const generatorCenterX = startX + generatorX * cellSize + cellSize / 2;
             const generatorCenterY = startY + generatorY * cellSize + cellSize / 2;
             const item = this.add.image(generatorCenterX, generatorCenterY, 'level1');
@@ -112,8 +103,8 @@ class GameScene extends Phaser.Scene {
             item.level = 1;
             item.gridX = spot.x;
             item.gridY = spot.y;
+            item.type = 'level1'; // Add this line to set the type property
 
-            // Create motion animation tween
             this.tweens.add({
                 targets: item,
                 x: itemX,
@@ -122,6 +113,10 @@ class GameScene extends Phaser.Scene {
                 ease: 'Cubic.easeOut',
                 onComplete: () => {
                     this.gridItems[spot.y][spot.x] = item;
+                    // Update quest progress after spawning
+                    if (this.game.react) {
+                        this.game.react.updateQuestProgress(1);
+                    }
                 }
             });
 
@@ -135,8 +130,8 @@ class GameScene extends Phaser.Scene {
     onDragStart(pointer, gameObject) {
         this.children.bringToTop(gameObject);
         if (gameObject === this.generator) {
-            this.isGeneratorDragging = true; // Add this line
-            this.generatorMoved = false; // Reset this flag on drag start
+            this.isGeneratorDragging = true;
+            this.generatorMoved = false;
         }
     }
 
@@ -144,7 +139,7 @@ class GameScene extends Phaser.Scene {
         gameObject.x = dragX;
         gameObject.y = dragY;
         if (gameObject === this.generator) {
-            this.generatorMoved = true; // Set this flag if the generator is moved
+            this.generatorMoved = true;
         }
     }
 
@@ -153,15 +148,13 @@ class GameScene extends Phaser.Scene {
         const startPos = { x: gameObject.gridX, y: gameObject.gridY };
 
         if (gameObject === this.generator) {
-            // Handle generator drop
             if (!this.gridOccupancy[dropPos.y][dropPos.x]) {
                 this.moveGenerator(gameObject, dropPos);
             } else {
                 this.resetPosition(gameObject);
             }
-            this.isGeneratorDragging = false; // Add this line
+            this.isGeneratorDragging = false;
         } else {
-            // Handle item drop
             if (dropPos.x === startPos.x && dropPos.y === startPos.y) {
                 this.resetPosition(gameObject);
             } else if (this.gridItems[dropPos.y][dropPos.x]) {
@@ -210,36 +203,36 @@ class GameScene extends Phaser.Scene {
     }
 
     mergeItems(item1, item2) {
-        // Play merge sound
         this.sound.play('mergeSound');
 
         const newLevel = item1.level + 1;
         if (newLevel <= 5) {
-            // Use the position of item2 (the stationary item) for merging
             const mergePos = { x: item2.gridX, y: item2.gridY };
             
-            // Calculate the centered position for the new item
             const { startX, startY, cellSize, margin } = this.gridInfo;
             const newItemX = startX + mergePos.x * cellSize + cellSize / 2;
             const newItemY = startY + mergePos.y * cellSize + cellSize / 2;
 
-            // Create new item at the calculated centered position
             const newItem = this.add.image(newItemX, newItemY, `level${newLevel}`);
-            newItem.setDisplaySize(cellSize, cellSize); // Removed 0.95 scaling
+            newItem.setDisplaySize(cellSize, cellSize);
             newItem.setInteractive({ draggable: true });
             newItem.level = newLevel;
             newItem.gridX = mergePos.x;
             newItem.gridY = mergePos.y;
+            newItem.type = `level${newLevel}`; // Add this line to set the type property
 
-            // Update grid and destroy old items
             this.gridItems[item1.gridY][item1.gridX] = null;
             this.gridOccupancy[item1.gridY][item1.gridX] = false;
             this.gridItems[mergePos.y][mergePos.x] = newItem;
             this.gridOccupancy[mergePos.y][mergePos.x] = true;
             item1.destroy();
             item2.destroy();
+
+            // Update quest progress after merging
+            if (this.game.react) {
+                this.game.react.updateQuestProgress(newLevel);
+            }
         } else {
-            // If max level reached, just reset the position of item1
             this.resetPosition(item1);
         }
     }
@@ -250,11 +243,127 @@ class GameScene extends Phaser.Scene {
         const gridY = Math.floor((item.y - startY) / cellSize);
         return { x: gridX, y: gridY };
     }
+
+    clearQuestItems(requirements) {
+        requirements.forEach(req => {
+            let itemsToRemove = req.required;
+            this.gridItems.forEach((row, y) => {
+                row.forEach((item, x) => {
+                    if (item && item.type === req.type && itemsToRemove > 0) {
+                        item.destroy();
+                        this.gridItems[y][x] = null;
+                        this.gridOccupancy[y][x] = false;
+                        itemsToRemove--;
+                    }
+                });
+            });
+        });
+    }
+
+    updateAllQuestProgress() {
+        const itemCounts = {};
+        this.gridItems.forEach(row => {
+            row.forEach(item => {
+                if (item && item.type) {
+                    itemCounts[item.type] = (itemCounts[item.type] || 0) + 1;
+                }
+            });
+        });
+
+        if (this.game.react) {
+            this.game.react.updateAllQuestProgress(itemCounts);
+        }
+    }
 }
 
-const GameComponent = ({ onEnergyChange, onCoinChange }) => {
+const GameComponent = () => {
     const gameRef = useRef(null);
-    const [coins, setCoins] = useState(0); // Add state for coins
+    const [coins, setCoins] = useState(0);
+    const [quests, setQuests] = useState([
+        {
+            characterIcon: 'assets/character1.png',
+            rewards: [
+                { type: 'coin', amount: 50 },
+            ],
+            requirements: [
+                { icon: 'assets/level1.png', type: 'level1', collected: 0, required: 5 },
+                { icon: 'assets/level2.png', type: 'level2', collected: 0, required: 3 },
+            ],
+        },
+        {
+            characterIcon: 'assets/character2.png',
+            rewards: [
+                { type: 'coin', amount: 75 },
+            ],
+            requirements: [
+                { icon: 'assets/level2.png', type: 'level2', collected: 0, required: 4 },
+                { icon: 'assets/level3.png', type: 'level3', collected: 0, required: 2 },
+            ],
+        },
+        {
+            characterIcon: 'assets/character3.png',
+            rewards: [
+                { type: 'coin', amount: 100 },
+            ],
+            requirements: [
+                { icon: 'assets/level3.png', type: 'level3', collected: 0, required: 3 },
+                { icon: 'assets/level4.png', type: 'level4', collected: 0, required: 1 },
+            ],
+        },
+    ]);
+
+    const handleQuestClick = (quest) => {
+        console.log('Quest clicked:', quest);
+    };
+
+    const handleQuestClaim = (claimedQuest) => {
+        setQuests((prevQuests) => {
+            const updatedQuests = prevQuests.filter(q => q !== claimedQuest);
+            return updatedQuests;
+        });
+
+        setCoins((prevCoins) => prevCoins + claimedQuest.rewards[0].amount);
+
+        if (gameRef.current && gameRef.current.scene.scenes[0]) {
+            const gameScene = gameRef.current.scene.scenes[0];
+            gameScene.clearQuestItems(claimedQuest.requirements);
+            
+            // Update quest progress based on remaining items
+            setTimeout(() => {
+                gameScene.updateAllQuestProgress();
+            }, 0);
+        }
+    };
+
+    const updateQuestProgress = (level) => {
+        setQuests((prevQuests) => {
+            return prevQuests.map((quest) => {
+                const updatedRequirements = quest.requirements.map((req) => {
+                    if (req.type === `level${level}`) {
+                        return {
+                            ...req,
+                            collected: Math.min(req.collected + 1, req.required),
+                        };
+                    }
+                    return req;
+                });
+                return {
+                    ...quest,
+                    requirements: updatedRequirements,
+                };
+            });
+        });
+    };
+
+    const updateAllQuestProgress = (itemCounts) => {
+        setQuests(prevQuests => prevQuests.map(quest => ({
+            ...quest,
+            requirements: quest.requirements.map(req => ({
+                ...req,
+                collected: Math.min(itemCounts[req.type] || 0, req.required)
+            }))
+        })));
+    };
 
     useEffect(() => {
         const config = {
@@ -270,11 +379,11 @@ const GameComponent = ({ onEnergyChange, onCoinChange }) => {
             const game = new Phaser.Game(config);
             gameRef.current = game;
             game.react = {
-                updateEnergy: (newEnergy) => onEnergyChange(newEnergy),
-                updateCoins: (newCoins) => {
-                    onCoinChange(newCoins);
-                    setCoins(newCoins); // Update coin state
-                }
+                updateEnergy: (newEnergy) => {
+                    console.log('Energy updated:', newEnergy);
+                },
+                updateQuestProgress,
+                updateAllQuestProgress,
             };
             console.log('Phaser game initialized');
         } catch (error) {
@@ -287,13 +396,14 @@ const GameComponent = ({ onEnergyChange, onCoinChange }) => {
                 console.log('Phaser game destroyed');
             }
         };
-    }, [onEnergyChange, onCoinChange]);
+    }, []);
 
     return (
-        <div>
+        <div className="board">
+            <QuestPanel quests={quests} onQuestClick={handleQuestClick} onQuestClaim={handleQuestClaim} />
             <div id="phaser-game"></div>
             <div style={{ position: 'absolute', top: 20, right: 20, color: '#fff' }}>
-                Coins: {coins} {/* Display coins */}
+                Coins: {coins}
             </div>
         </div>
     );

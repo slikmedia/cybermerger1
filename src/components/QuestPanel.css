@@ -1,0 +1,62 @@
+.quest-panel {
+    display: flex;
+    justify-content: space-around;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10;
+}
+
+.quest {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.character-icon {
+    width: auto;
+    height: 100px;
+}
+
+.rewards, .requirements {
+    display: flex;
+    justify-content: center;
+    margin-top: 5px;
+    color: white;
+}
+
+.reward, .requirement {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 5px;
+}
+
+.reward img, .requirement img {
+    width: 30px;
+    height: 30px;
+}
+
+.coin-reward {
+    font-weight: bold;
+    color: gold;
+}
+
+.claim-button {
+    background-color: yellow;
+    color: black;
+    border: none;
+    padding: 5px 10px;
+    margin-top: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.claim-button:hover {
+    background-color: #ffff00;
+}
