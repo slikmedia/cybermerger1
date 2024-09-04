@@ -120,6 +120,7 @@ class GameScene extends Phaser.Scene {
                 }
             });
 
+            // Consume 1 energy per spawn
             this.energy--;
             if (this.game.react) {
                 this.game.react.updateEnergy(this.energy);
@@ -279,6 +280,7 @@ class GameScene extends Phaser.Scene {
 const GameComponent = () => {
     const gameRef = useRef(null);
     const [coins, setCoins] = useState(0);
+    const [energy, setEnergy] = useState(100); // Add energy state
     const [quests, setQuests] = useState([
         {
             characterIcon: 'assets/character1.png',
@@ -365,6 +367,10 @@ const GameComponent = () => {
         })));
     };
 
+    const updateEnergy = (newEnergy) => {
+        setEnergy(newEnergy);
+    };
+
     useEffect(() => {
         const config = {
             type: Phaser.AUTO,
@@ -379,9 +385,7 @@ const GameComponent = () => {
             const game = new Phaser.Game(config);
             gameRef.current = game;
             game.react = {
-                updateEnergy: (newEnergy) => {
-                    console.log('Energy updated:', newEnergy);
-                },
+                updateEnergy, // Use the updateEnergy function
                 updateQuestProgress,
                 updateAllQuestProgress,
             };
@@ -400,11 +404,11 @@ const GameComponent = () => {
 
     return (
         <div className="board">
+            <div className='statsUI'>
+                Coins: {coins} | Energy: {energy} 
+            </div>
             <QuestPanel quests={quests} onQuestClick={handleQuestClick} onQuestClaim={handleQuestClaim} />
             <div id="phaser-game"></div>
-            <div style={{ position: 'absolute', top: 20, right: 20, color: '#fff' }}>
-                Coins: {coins}
-            </div>
         </div>
     );
 };

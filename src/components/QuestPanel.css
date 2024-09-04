@@ -2,11 +2,12 @@
     display: flex;
     justify-content: space-around;
     background-color: rgba(0, 0, 0, 0.5);
-    padding: 10px;
+    padding: 10px 0;
     top: 0;
     left: 0;
     width: 100%;
     z-index: 10;
+    position: relative;
 }
 
 .quest {
@@ -55,8 +56,14 @@
     cursor: pointer;
     border-radius: 5px;
     transition: background-color 0.3s;
+    position: absolute;
+    top: 50%;
 }
 
 .claim-button:hover {
     background-color: #ffff00;
+}
+
+.statsUI {
+    color: white;
 }
