@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import QuestPanel from './QuestPanel';
 
+
 class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
