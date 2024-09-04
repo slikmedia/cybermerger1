@@ -277,41 +277,37 @@ class GameScene extends Phaser.Scene {
     }
 }
 
+const generateRandomQuest = () => {
+    const levels = [1, 2, 3, 4, 5];
+    const randomLevel = () => levels[Math.floor(Math.random() * levels.length)];
+    const randomAmount = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+    const level1 = randomLevel();
+    let level2 = randomLevel();
+    while (level2 === level1) {
+        level2 = randomLevel();
+    }
+
+    return {
+        characterIcon: `assets/character${randomAmount(1, 3)}.png`,
+        rewards: [
+            { type: 'coin', amount: randomAmount(50, 100) },
+        ],
+        requirements: [
+            { icon: `assets/level${level1}.png`, type: `level${level1}`, collected: 0, required: randomAmount(1, 5) },
+            { icon: `assets/level${level2}.png`, type: `level${level2}`, collected: 0, required: randomAmount(1, 5) },
+        ],
+    };
+};
+
 const GameComponent = () => {
     const gameRef = useRef(null);
     const [coins, setCoins] = useState(0);
     const [energy, setEnergy] = useState(100); // Add energy state
     const [quests, setQuests] = useState([
-        {
-            characterIcon: 'assets/character1.png',
-            rewards: [
-                { type: 'coin', amount: 50 },
-            ],
-            requirements: [
-                { icon: 'assets/level1.png', type: 'level1', collected: 0, required: 5 },
-                { icon: 'assets/level2.png', type: 'level2', collected: 0, required: 3 },
-            ],
-        },
-        {
-            characterIcon: 'assets/character2.png',
-            rewards: [
-                { type: 'coin', amount: 75 },
-            ],
-            requirements: [
-                { icon: 'assets/level2.png', type: 'level2', collected: 0, required: 4 },
-                { icon: 'assets/level3.png', type: 'level3', collected: 0, required: 2 },
-            ],
-        },
-        {
-            characterIcon: 'assets/character3.png',
-            rewards: [
-                { type: 'coin', amount: 100 },
-            ],
-            requirements: [
-                { icon: 'assets/level3.png', type: 'level3', collected: 0, required: 3 },
-                { icon: 'assets/level4.png', type: 'level4', collected: 0, required: 1 },
-            ],
-        },
+        generateRandomQuest(),
+        generateRandomQuest(),
+        generateRandomQuest(),
     ]);
 
     const handleQuestClick = (quest) => {
@@ -320,7 +316,7 @@ const GameComponent = () => {
 
     const handleQuestClaim = (claimedQuest) => {
         setQuests((prevQuests) => {
-            const updatedQuests = prevQuests.filter(q => q !== claimedQuest);
+            const updatedQuests = prevQuests.map(q => q === claimedQuest ? generateRandomQuest() : q);
             return updatedQuests;
         });
 
