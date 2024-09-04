@@ -1,5 +1,12 @@
 body {
+  background-image: url('http://localhost:3000/assets/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;

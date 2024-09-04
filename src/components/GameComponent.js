@@ -10,7 +10,7 @@ class GameScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('background', 'assets/background.png');
+        // Remove background loading
         this.load.image('generator', 'assets/generator.png');
         for (let i = 1; i <= 5; i++) {
             this.load.image(`level${i}`, `assets/level${i}.png`);
@@ -18,8 +18,7 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.image(400, 300, 'background');
-
+        // Remove background image creation
         const gridWidth = 9;  // Increased from 7
         const gridHeight = 11;  // Increased from 9
         const cellSize = 70;  // Increased from 60
@@ -201,6 +200,7 @@ const GameComponent = ({ onEnergyChange }) => {
             height: 800,
             scene: GameScene,
             parent: 'phaser-game',
+            transparent: true,
         };
 
         try {
@@ -223,7 +223,10 @@ const GameComponent = ({ onEnergyChange }) => {
     }, [onEnergyChange]);
 
     return (
-        <div id="phaser-game" style={{width: '1000px', height: '800px', border: '1px solid black'}}></div>
+        <div id="phaser-game" style={{
+            width: '1000px', 
+            height: '800px',
+        }}></div>
     );
 };
 
