@@ -106,3 +106,13 @@
         width: 50%;  /* Show 2 quests on very small screens */
     }
 }
+
+.xp-reward {
+    font-weight: bold;
+    color: lightblue;
+    margin-left: 5px; /* Optional: Add some spacing */
+}
+
+.requirement.fulfilled span {
+    color: green;
+}

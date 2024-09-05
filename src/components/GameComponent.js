@@ -292,6 +292,7 @@ const generateRandomQuest = () => {
         characterIcon: `assets/character${randomAmount(1, 3)}.png`,
         rewards: [
             { type: 'coin', amount: randomAmount(50, 100) },
+            { type: 'xp', amount: randomAmount(10, 30) }
         ],
         requirements: [
             { icon: `assets/level${level1}.png`, type: `level${level1}`, collected: 0, required: randomAmount(1, 5) },
@@ -304,10 +305,12 @@ const GameComponent = () => {
     const gameRef = useRef(null);
     const [coins, setCoins] = useState(0);
     const [energy, setEnergy] = useState(100);
+    const [xp, setXp] = useState(0);
+    const [level, setLevel] = useState(1);
     const [quests, setQuests] = useState([
         generateRandomQuest(),
         generateRandomQuest(),
-        generateRandomQuest(),
+        generateRandomQuest(), 
         generateRandomQuest(),
         generateRandomQuest(),
         generateRandomQuest(),
@@ -323,7 +326,16 @@ const GameComponent = () => {
             return updatedQuests;
         });
 
-        setCoins((prevCoins) => prevCoins + claimedQuest.rewards[0].amount);
+        setCoins((prevCoins) => prevCoins + claimedQuest.rewards.find(r => r.type === 'coin').amount);
+        setXp((prevXp) => {
+            const newXp = prevXp + claimedQuest.rewards.find(r => r.type === 'xp').amount;
+            const xpNeeded = level * 50 + (level - 1) * 20;
+            if (newXp >= xpNeeded) {
+                setLevel((prevLevel) => prevLevel + 1);
+                return newXp - xpNeeded;
+            }
+            return newXp;
+        });
 
         if (gameRef.current && gameRef.current.scene.scenes[0]) {
             const gameScene = gameRef.current.scene.scenes[0];
@@ -403,7 +415,7 @@ const GameComponent = () => {
     return (
         <div className="board">
             <div className='statsUI'>
-                Coins: {coins} | Energy: {energy} 
+                Coins: {coins} | Energy: {energy} | Level: {level} | XP: {xp}
             </div>
             <QuestPanel quests={quests} onQuestClick={handleQuestClick} onQuestClaim={handleQuestClaim} />
             <div id="phaser-game"></div>
