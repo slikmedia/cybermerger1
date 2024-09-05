@@ -1,6 +1,6 @@
 .quest-panel {
     display: flex;
-    justify-content: space-around;
+    justify-content: flex-start;
     background-color: rgba(0, 0, 0, 0.5);
     padding: 10px 0;
     top: 0;
@@ -8,7 +8,19 @@
     width: 100%;
     z-index: 10;
     position: relative;
-    margin-bottom: 10px;
+    overflow-x: auto;
+    cursor: grab;
+    user-select: none; /* Prevent text selection */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+}
+
+.quest-panel::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}
+
+.quest-panel.dragging {
+    cursor: grabbing;
 }
 
 .quest {
@@ -16,6 +28,12 @@
     flex-direction: column;
     align-items: center;
     cursor: pointer;
+    min-width: calc(100% / 4.5); /* Show 4 quests */
+    user-select: none; /* Prevent text selection */
+}
+
+.character-icon, .quest-info, .claim-button {
+    user-select: none; /* Prevent text selection */
 }
 
 .character-icon {
@@ -77,5 +95,14 @@
 @media (max-width: 768px) {
     .character-icon {
         height: 50px;
+    }
+    .quest {
+        width: calc(100% / 3);  /* Show 3 quests on smaller screens */
+    }
+}
+
+@media (max-width: 480px) {
+    .quest {
+        width: 50%;  /* Show 2 quests on very small screens */
     }
 }

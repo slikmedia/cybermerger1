@@ -308,6 +308,9 @@ const GameComponent = () => {
         generateRandomQuest(),
         generateRandomQuest(),
         generateRandomQuest(),
+        generateRandomQuest(),
+        generateRandomQuest(),
+        generateRandomQuest(),
     ]);
 
     const handleQuestClick = (quest) => {
