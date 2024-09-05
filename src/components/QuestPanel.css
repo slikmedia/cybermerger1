@@ -8,6 +8,7 @@
     width: 100%;
     z-index: 10;
     position: relative;
+    margin-bottom: 10px;
 }
 
 .quest {
@@ -19,7 +20,12 @@
 
 .character-icon {
     width: auto;
-    height: 100px;
+    height: 150px;
+}
+.quest-info {
+    background: #000;
+    margin-top: -50px;
+    padding: 10px;
 }
 
 .rewards, .requirements {

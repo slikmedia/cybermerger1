@@ -2,6 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import QuestPanel from './QuestPanel';
 
+const GRID_WIDTH = 7;
+const GRID_HEIGHT = 19;
+const CELL_SIZE = 90;
+const MARGIN = 1;
+const EFFECTIVE_CELL_SIZE = CELL_SIZE - 2 * MARGIN;
 
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -22,37 +27,33 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
-        const gridWidth = 9;
-        const gridHeight = 11;
-        const cellSize = 70;
-        const effectiveCellSize = cellSize - 2 * 1;
-        const startX = (this.sys.game.config.width - gridWidth * cellSize) / 2;
-        const startY = (this.sys.game.config.height - gridHeight * cellSize) / 2;
+        const startX = (this.sys.game.config.width - GRID_WIDTH * CELL_SIZE) / 2;
+        const startY = (this.sys.game.config.height - GRID_HEIGHT * CELL_SIZE) / 2;
 
-        this.gridInfo = { startX, startY, gridWidth, gridHeight, cellSize };
-        this.gridOccupancy = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill(false));
-        this.gridItems = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill(null));
+        this.gridInfo = { startX, startY, gridWidth: GRID_WIDTH, gridHeight: GRID_HEIGHT, cellSize: CELL_SIZE };
+        this.gridOccupancy = Array(GRID_HEIGHT).fill(null).map(() => Array(GRID_WIDTH).fill(false));
+        this.gridItems = Array(GRID_HEIGHT).fill(null).map(() => Array(GRID_WIDTH).fill(null));
 
-        for (let y = 0; y < gridHeight; y++) {
-            for (let x = 0; x < gridWidth; x++) {
-                const cellX = startX + x * cellSize + 1;
-                const cellY = startY + y * cellSize + 1;
-                const cell = this.add.rectangle(cellX, cellY, effectiveCellSize, effectiveCellSize, 0x000000);
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                const cellX = startX + x * CELL_SIZE + MARGIN;
+                const cellY = startY + y * CELL_SIZE + MARGIN;
+                const cell = this.add.rectangle(cellX, cellY, EFFECTIVE_CELL_SIZE, EFFECTIVE_CELL_SIZE, 0x000000);
                 cell.setOrigin(0, 0);
                 cell.setAlpha(0.3);
             }
         }
 
-        const centerX = startX + Math.floor(gridWidth / 2) * cellSize + cellSize / 2;
-        const centerY = startY + Math.floor(gridHeight / 2) * cellSize + cellSize / 2;
+        const centerX = startX + Math.floor(GRID_WIDTH / 2) * CELL_SIZE + CELL_SIZE / 2;
+        const centerY = startY + Math.floor(GRID_HEIGHT / 2) * CELL_SIZE + CELL_SIZE / 2;
         const generator = this.add.image(centerX, centerY, 'generator');
-        generator.setDisplaySize(effectiveCellSize, effectiveCellSize);
+        generator.setDisplaySize(EFFECTIVE_CELL_SIZE, EFFECTIVE_CELL_SIZE);
         generator.setInteractive({ draggable: true });
         generator.on('pointerup', this.spawnItem, this);
 
         this.generator = generator;
-        this.generator.gridX = Math.floor(gridWidth / 2);
-        this.generator.gridY = Math.floor(gridHeight / 2);
+        this.generator.gridX = Math.floor(GRID_WIDTH / 2);
+        this.generator.gridY = Math.floor(GRID_HEIGHT / 2);
         this.gridItems[this.generator.gridY][this.generator.gridX] = 'generator';
         this.gridOccupancy[this.generator.gridY][this.generator.gridX] = true;
 
@@ -77,7 +78,7 @@ class GameScene extends Phaser.Scene {
             for (let x = 0; x < gridWidth; x++) {
                 if (!this.gridItems[y][x] && !this.gridOccupancy[y][x]) {
                     const distance = Math.sqrt(Math.pow(x - generatorX, 2) + Math.pow(y - generatorY, 2));
-                    emptySpots.push({x, y, distance});
+                    emptySpots.push({ x, y, distance });
                 }
             }
         }
@@ -97,13 +98,12 @@ class GameScene extends Phaser.Scene {
             const generatorCenterX = startX + generatorX * cellSize + cellSize / 2;
             const generatorCenterY = startY + generatorY * cellSize + cellSize / 2;
             const item = this.add.image(generatorCenterX, generatorCenterY, 'level1');
-
             item.setDisplaySize(cellSize, cellSize);
             item.setInteractive({ draggable: true });
             item.level = 1;
             item.gridX = spot.x;
             item.gridY = spot.y;
-            item.type = 'level1'; // Add this line to set the type property
+            item.type = 'level1';
 
             this.tweens.add({
                 targets: item,
@@ -113,14 +113,12 @@ class GameScene extends Phaser.Scene {
                 ease: 'Cubic.easeOut',
                 onComplete: () => {
                     this.gridItems[spot.y][spot.x] = item;
-                    // Update quest progress after spawning
                     if (this.game.react) {
                         this.game.react.updateQuestProgress(1);
                     }
                 }
             });
 
-            // Consume 1 energy per spawn
             this.energy--;
             if (this.game.react) {
                 this.game.react.updateEnergy(this.energy);
@@ -209,7 +207,7 @@ class GameScene extends Phaser.Scene {
         const newLevel = item1.level + 1;
         if (newLevel <= 5) {
             const mergePos = { x: item2.gridX, y: item2.gridY };
-            
+
             const { startX, startY, cellSize } = this.gridInfo;
             const newItemX = startX + mergePos.x * cellSize + cellSize / 2;
             const newItemY = startY + mergePos.y * cellSize + cellSize / 2;
@@ -220,7 +218,7 @@ class GameScene extends Phaser.Scene {
             newItem.level = newLevel;
             newItem.gridX = mergePos.x;
             newItem.gridY = mergePos.y;
-            newItem.type = `level${newLevel}`; // Add this line to set the type property
+            newItem.type = `level${newLevel}`;
 
             this.gridItems[item1.gridY][item1.gridX] = null;
             this.gridOccupancy[item1.gridY][item1.gridX] = false;
@@ -229,10 +227,8 @@ class GameScene extends Phaser.Scene {
             item1.destroy();
             item2.destroy();
 
-            // Update quest progress after merging
             if (this.game.react) {
                 this.game.react.updateQuestProgress(newLevel);
-                // Refresh all quest progress
                 setTimeout(() => {
                     this.updateAllQuestProgress();
                 }, 0);
@@ -307,7 +303,7 @@ const generateRandomQuest = () => {
 const GameComponent = () => {
     const gameRef = useRef(null);
     const [coins, setCoins] = useState(0);
-    const [energy, setEnergy] = useState(100); // Add energy state
+    const [energy, setEnergy] = useState(100);
     const [quests, setQuests] = useState([
         generateRandomQuest(),
         generateRandomQuest(),
@@ -329,8 +325,7 @@ const GameComponent = () => {
         if (gameRef.current && gameRef.current.scene.scenes[0]) {
             const gameScene = gameRef.current.scene.scenes[0];
             gameScene.clearQuestItems(claimedQuest.requirements);
-            
-            // Update quest progress based on remaining items
+
             setTimeout(() => {
                 gameScene.updateAllQuestProgress();
             }, 0);
@@ -385,7 +380,7 @@ const GameComponent = () => {
             const game = new Phaser.Game(config);
             gameRef.current = game;
             game.react = {
-                updateEnergy, // Use the updateEnergy function
+                updateEnergy,
                 updateQuestProgress,
                 updateAllQuestProgress,
             };

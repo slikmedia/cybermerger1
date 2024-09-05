@@ -16,20 +16,22 @@ const QuestPanel = ({ quests, onQuestClick, onQuestClaim }) => {
             {quests.map((quest, index) => (
                 <div key={index} className="quest" onClick={() => onQuestClick(quest)}>
                     <img src={quest.characterIcon} alt="Character" className="character-icon" />
-                    <div className="rewards">
-                        {quest.rewards.map((reward, idx) => (
-                            <div key={idx} className="reward">
-                                <span className="coin-reward">$ {reward.amount}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="requirements">
-                        {quest.requirements.map((item, idx) => (
-                            <div key={idx} className="requirement">
-                                <img src={item.icon} alt={item.type} />
-                                <span>{item.collected}/{item.required}</span>
-                            </div>
-                        ))}
+                    <div className="quest-info">
+                        <div className="rewards">
+                            {quest.rewards.map((reward, idx) => (
+                                <div key={idx} className="reward">
+                                    <span className="coin-reward">$ {reward.amount}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="requirements">
+                            {quest.requirements.map((item, idx) => (
+                                <div key={idx} className="requirement">
+                                    <img src={item.icon} alt={item.type} />
+                                    <span>{item.collected}/{item.required}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                     {isQuestComplete(quest) && (
                         <button 
