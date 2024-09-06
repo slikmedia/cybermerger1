@@ -44,6 +44,7 @@
     background: #000;
     margin-top: -50px;
     padding: 10px;
+    min-width: 100px;
 }
 
 .rewards, .requirements {
@@ -71,11 +72,11 @@
     color: #000;
     border-radius: 50px;
     padding: 5px 5px;
-    margin: -27px 0 0 -40px;
+    margin: -73px 0 0 -40px;
 }
 
 .claim-button {
-    background-color: yellow;
+    background-color: gold;
     color: black;
     border: none;
     padding: 5px 10px;
@@ -84,12 +85,7 @@
     cursor: pointer;
     border-radius: 5px;
     transition: background-color 0.3s;
-    position: absolute;
-    top: 50%;
-}
-
-.claim-button:hover {
-    background-color: #ffff00;
+    margin-top: -38px;
 }
 
 .statsUI {
@@ -108,12 +104,27 @@
 .xp-reward {
     font-weight: bold;
     color: lightblue;
-}
-
-.requirement.fulfilled span {
-    color: green;
+    margin: 5px 0 8px;
 }
 
 .character-icon, .quest-info img {
     pointer-events: none;
+}
+
+.requirement {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 5px;
+    padding-bottom: 2px;
+    border-bottom: 2px solid transparent;
+}
+
+.requirement img {
+    width: 30px;
+    height: 30px;
+}
+
+.requirement.fulfilled {
+    border-bottom: 2px solid green;
 }

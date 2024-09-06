@@ -14,6 +14,7 @@ class GameScene extends Phaser.Scene {
         this.energy = 100;
         this.isGeneratorDragging = false;
         this.generatorMoved = false;
+        this.claimSoundTimer = null;
     }
 
     preload() {
@@ -283,7 +284,14 @@ class GameScene extends Phaser.Scene {
     }
 
     playClaimQuestSound() {
-        this.sound.play('claimQuestSound');
+        if (this.claimSoundTimer) {
+            clearTimeout(this.claimSoundTimer);
+        }
+        
+        this.claimSoundTimer = setTimeout(() => {
+            this.sound.play('claimQuestSound');
+            this.claimSoundTimer = null;
+        }, 100);
     }
 }
 
@@ -295,18 +303,21 @@ const generateRandomQuest = (playerLevel) => {
     const numRequirements = randomAmount(1, 3);
     const requirements = [];
 
+    const usedLevels = new Set();
+
     for (let i = 0; i < numRequirements; i++) {
-        let level = randomLevel();
-        while (requirements.some(req => req.type === `level${level}`)) {
+        let level;
+        do {
             level = randomLevel();
-        }
-        const baseAmount = Math.max(1, Math.floor(playerLevel / 2));
-        const maxAmount = Math.min(5, baseAmount + playerLevel);
+        } while (usedLevels.has(level));
+
+        usedLevels.add(level);
+
         requirements.push({
             icon: `assets/level${level}.png`,
             type: `level${level}`,
             collected: 0,
-            required: randomAmount(baseAmount, maxAmount)
+            required: 1
         });
     }
 

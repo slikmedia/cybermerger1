@@ -66,19 +66,21 @@ const QuestPanel = ({ quests, onQuestClick, onQuestClaim }) => {
                 >
                     <img src={quest.characterIcon} alt="Character" className="character-icon" />
                     <div className="quest-info">
+                    <div className="requirements">
+                        {quest.requirements.map((item, idx) => (
+                            <div 
+                                key={idx} 
+                                className={`requirement ${item.collected >= item.required ? 'fulfilled' : ''}`}
+                            >
+                                <img src={item.icon} alt={item.type} />
+                            </div>
+                            ))}
+                        </div>
                         <div className="rewards">
                             {quest.rewards.map((reward, idx) => (
                                 <div key={idx} className="reward">
                                     {reward.type === 'coin' && <span className="coin-reward">{reward.amount}</span>}
                                     {reward.type === 'xp' && <span className="xp-reward">{reward.amount}xp</span>}
-                                </div>
-                            ))}
-                        </div>
-                        <div className="requirements">
-                            {quest.requirements.map((item, idx) => (
-                                <div key={idx} className={`requirement ${item.collected >= item.required ? 'fulfilled' : ''}`}>
-                                    <img src={item.icon} alt={item.type} />
-                                    <span>{item.collected}/{item.required}</span>
                                 </div>
                             ))}
                         </div>
