@@ -67,7 +67,11 @@
 
 .coin-reward {
     font-weight: bold;
-    color: gold;
+    background: gold;
+    color: #000;
+    border-radius: 50px;
+    padding: 5px 5px;
+    margin: -27px 0 0 -40px;
 }
 
 .claim-button {
@@ -94,25 +98,22 @@
 
 @media (max-width: 768px) {
     .character-icon {
-        height: 50px;
+        height: 130px;
     }
     .quest {
-        width: calc(100% / 3);  /* Show 3 quests on smaller screens */
-    }
-}
-
-@media (max-width: 480px) {
-    .quest {
-        width: 50%;  /* Show 2 quests on very small screens */
+        min-width: calc(100% / 3.5);  /* Show 3 quests on smaller screens */
     }
 }
 
 .xp-reward {
     font-weight: bold;
     color: lightblue;
-    margin-left: 5px; /* Optional: Add some spacing */
 }
 
 .requirement.fulfilled span {
     color: green;
+}
+
+.character-icon, .quest-info img {
+    pointer-events: none;
 }

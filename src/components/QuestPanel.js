@@ -69,8 +69,8 @@ const QuestPanel = ({ quests, onQuestClick, onQuestClaim }) => {
                         <div className="rewards">
                             {quest.rewards.map((reward, idx) => (
                                 <div key={idx} className="reward">
-                                    {reward.type === 'coin' && <span className="coin-reward">$ {reward.amount}</span>}
-                                    {reward.type === 'xp' && <span className="xp-reward">{reward.amount} xp</span>}
+                                    {reward.type === 'coin' && <span className="coin-reward">{reward.amount}</span>}
+                                    {reward.type === 'xp' && <span className="xp-reward">{reward.amount}xp</span>}
                                 </div>
                             ))}
                         </div>
