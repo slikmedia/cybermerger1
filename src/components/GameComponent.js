@@ -67,6 +67,9 @@ class GameScene extends Phaser.Scene {
 
         this.backgroundMusic = this.sound.add('backgroundMusic', { loop: true, volume: 0.5 });
         this.backgroundMusic.play();
+
+        // Initialize haptic feedback
+        this.initHapticFeedback();
     }
 
     spawnItem() {
@@ -206,6 +209,7 @@ class GameScene extends Phaser.Scene {
 
     mergeItems(item1, item2) {
         this.sound.play('mergeSound');
+        this.triggerHapticFeedback(item1, item2); // Pass items to the haptic feedback method
 
         const newLevel = item1.level + 1;
         if (newLevel <= 5) {
@@ -292,6 +296,29 @@ class GameScene extends Phaser.Scene {
             this.sound.play('claimQuestSound');
             this.claimSoundTimer = null;
         }, 100);
+    }
+
+    // Updated haptic feedback methods
+
+    initHapticFeedback() {
+        // No initialization needed for this version
+    }
+
+    triggerHapticFeedback(item1, item2) {
+        this.shakeScreen(item1, item2);
+    }
+
+    shakeScreen(item1, item2) {
+        this.cameras.main.shake(100, 0.01); // Increase duration and intensity
+
+        // Add a quick scale up and down effect
+        this.tweens.add({
+            targets: [item1, item2],
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 100,
+            yoyo: true
+        });
     }
 }
 
