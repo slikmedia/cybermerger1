@@ -24,6 +24,8 @@ class GameScene extends Phaser.Scene {
         this.load.audio('mergeSound', 'assets/merge.mp3');
         this.load.audio('spawnSound', 'assets/spawn.mp3');
         this.load.audio('backgroundMusic', 'assets/background_music.mp3');
+        this.load.audio('questCompleteSound', 'assets/quest_complete.mp3');
+        this.load.audio('claimQuestSound', 'assets/claim_quest.mp3');
     }
 
     create() {
@@ -275,29 +277,46 @@ class GameScene extends Phaser.Scene {
             this.game.react.updateAllQuestProgress(itemCounts);
         }
     }
+
+    playQuestCompleteSound() {
+        this.sound.play('questCompleteSound');
+    }
+
+    playClaimQuestSound() {
+        this.sound.play('claimQuestSound');
+    }
 }
 
-const generateRandomQuest = () => {
+const generateRandomQuest = (playerLevel) => {
     const levels = [1, 2, 3, 4, 5];
     const randomLevel = () => levels[Math.floor(Math.random() * levels.length)];
     const randomAmount = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-    const level1 = randomLevel();
-    let level2 = randomLevel();
-    while (level2 === level1) {
-        level2 = randomLevel();
+    const numRequirements = randomAmount(1, 3);
+    const requirements = [];
+
+    for (let i = 0; i < numRequirements; i++) {
+        let level = randomLevel();
+        while (requirements.some(req => req.type === `level${level}`)) {
+            level = randomLevel();
+        }
+        const baseAmount = Math.max(1, Math.floor(playerLevel / 2));
+        const maxAmount = Math.min(5, baseAmount + playerLevel);
+        requirements.push({
+            icon: `assets/level${level}.png`,
+            type: `level${level}`,
+            collected: 0,
+            required: randomAmount(baseAmount, maxAmount)
+        });
     }
 
     return {
         characterIcon: `assets/character${randomAmount(1, 3)}.png`,
         rewards: [
-            { type: 'coin', amount: randomAmount(50, 100) },
-            { type: 'xp', amount: randomAmount(10, 30) }
+            { type: 'coin', amount: randomAmount(50, 100) * playerLevel },
+            { type: 'xp', amount: randomAmount(10, 30) * playerLevel }
         ],
-        requirements: [
-            { icon: `assets/level${level1}.png`, type: `level${level1}`, collected: 0, required: randomAmount(1, 5) },
-            { icon: `assets/level${level2}.png`, type: `level${level2}`, collected: 0, required: randomAmount(1, 5) },
-        ],
+        requirements,
     };
 };
 
@@ -308,12 +327,12 @@ const GameComponent = () => {
     const [xp, setXp] = useState(0);
     const [level, setLevel] = useState(1);
     const [quests, setQuests] = useState([
-        generateRandomQuest(),
-        generateRandomQuest(),
-        generateRandomQuest(), 
-        generateRandomQuest(),
-        generateRandomQuest(),
-        generateRandomQuest(),
+        generateRandomQuest(level),
+        generateRandomQuest(level),
+        generateRandomQuest(level), 
+        generateRandomQuest(level),
+        generateRandomQuest(level),
+        generateRandomQuest(level),
     ]);
 
     const handleQuestClick = (quest) => {
@@ -322,7 +341,7 @@ const GameComponent = () => {
 
     const handleQuestClaim = (claimedQuest) => {
         setQuests((prevQuests) => {
-            const updatedQuests = prevQuests.map(q => q === claimedQuest ? generateRandomQuest() : q);
+            const updatedQuests = prevQuests.map(q => q === claimedQuest ? generateRandomQuest(level) : q);
             return updatedQuests;
         });
 
@@ -340,6 +359,7 @@ const GameComponent = () => {
         if (gameRef.current && gameRef.current.scene.scenes[0]) {
             const gameScene = gameRef.current.scene.scenes[0];
             gameScene.clearQuestItems(claimedQuest.requirements);
+            gameScene.playQuestCompleteSound();
 
             setTimeout(() => {
                 gameScene.updateAllQuestProgress();
@@ -368,13 +388,24 @@ const GameComponent = () => {
     };
 
     const updateAllQuestProgress = (itemCounts = {}) => {
-        setQuests(prevQuests => prevQuests.map(quest => ({
-            ...quest,
-            requirements: quest.requirements.map(req => ({
-                ...req,
-                collected: Math.min(itemCounts[req.type] || 0, req.required)
-            }))
-        })));
+        setQuests(prevQuests => prevQuests.map(quest => {
+            const updatedQuest = {
+                ...quest,
+                requirements: quest.requirements.map(req => ({
+                    ...req,
+                    collected: Math.min(itemCounts[req.type] || 0, req.required)
+                }))
+            };
+            
+            // Check if the quest is completed and play the claim sound
+            if (updatedQuest.requirements.every(req => req.collected >= req.required)) {
+                if (gameRef.current && gameRef.current.scene.scenes[0]) {
+                    gameRef.current.scene.scenes[0].playClaimQuestSound();
+                }
+            }
+            
+            return updatedQuest;
+        }));
     };
 
     const updateEnergy = (newEnergy) => {
