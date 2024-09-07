@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import QuestPanel from './QuestPanel';
+import { CircularProgressbar } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
+import '../App.css'; // Import the CSS file
 
 const GRID_WIDTH = 7;
 const GRID_HEIGHT = 19;
@@ -309,7 +312,7 @@ class GameScene extends Phaser.Scene {
     }
 
     shakeScreen(item1, item2) {
-        this.cameras.main.shake(100, 0.01); // Increase duration and intensity
+        this.cameras.main.shake(100, 0.005); // Increase duration and intensity
 
         // Add a quick scale up and down effect
         this.tweens.add({
@@ -485,10 +488,20 @@ const GameComponent = () => {
         };
     }, []);
 
+    const xpNeeded = level * 50 + (level - 1) * 20;
+    const xpPercentage = (xp / xpNeeded) * 100;
+
     return (
         <div className="board">
             <div className='statsUI'>
-                Coins: {coins} | Energy: {energy} | Level: {level} | XP: {xp}
+                <div className="circular-progressbar-container">
+                    <CircularProgressbar
+                        value={xpPercentage}
+                        text={`${level}`}
+                        className="circular-progressbar"
+                    />
+                </div>
+                Coins: {coins} | Energy: {energy} 
             </div>
             <QuestPanel quests={quests} onQuestClick={handleQuestClick} onQuestClaim={handleQuestClaim} />
             <div id="phaser-game"></div>

@@ -1,7 +1,4 @@
 body {
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
   margin: 0;
   padding: 0;
   height: 100vh;
@@ -12,6 +9,24 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+html {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: env(safe-area-inset-top); /* For iOS notch */
 }
 
 code {

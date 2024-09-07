@@ -44,7 +44,7 @@ const QuestPanel = ({ quests, onQuestClick, onQuestClaim }) => {
 
     useEffect(() => {
         if (completedQuestRef.current) {
-            completedQuestRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            completedQuestRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
         }
     }, [quests]);
 
