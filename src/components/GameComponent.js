@@ -453,10 +453,10 @@ const GameComponent = () => {
     useEffect(() => {
         const config = {
             type: Phaser.AUTO,
-            width: 650,
+            width: 640,
             height: 800,
-            scene: GameScene,
             parent: 'phaser-game',
+            scene: GameScene,
             transparent: true,
         };
 
