@@ -501,7 +501,7 @@ const GameComponent = () => {
                         className="circular-progressbar"
                     />
                 </div>
-                Coins: {coins} | Energy: {energy} 
+                🪙 {coins} ⚡ {energy}  💎 XX
             </div>
             <QuestPanel quests={quests} onQuestClick={handleQuestClick} onQuestClaim={handleQuestClaim} />
             <div id="phaser-game"></div>

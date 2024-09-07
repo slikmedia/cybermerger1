@@ -96,15 +96,6 @@
     padding: 0 10px 5px;
 }
 
-@media (max-width: 768px) {
-    .character-icon {
-        height: 130px;
-    }
-    .quest {
-        min-width: calc(100% / 3.5);  /* Show 3 quests on smaller screens */
-    }
-}
-
 .xp-reward {
     font-weight: bold;
     color: lightblue;
@@ -154,4 +145,25 @@ body .circular-progressbar .CircularProgressbar-text {
     fill: #fff;
     font-size: 40px;
     font-weight: 800;
+}
+
+@media (min-width: 1024px) {
+    .character-icon {
+        height: 180px;
+    }
+
+    .quest {
+        min-width: calc(100% / 6);
+    }
+}
+
+@media (max-width: 768px) {
+    .character-icon {
+        height: 130px;
+    }
+
+    .quest {
+        min-width: calc(100% / 2.5);
+        /* Show 3 quests on smaller screens */
+    }
 }
