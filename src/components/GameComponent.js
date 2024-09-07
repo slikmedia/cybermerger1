@@ -348,11 +348,15 @@ const generateRandomQuest = (playerLevel) => {
         });
     }
 
+    const baseCoinReward = 10;
+    const baseXpReward = 5;
+    const totalRewardMultiplier = requirements.reduce((acc, req) => acc + req.required * parseInt(req.type.replace('level', '')), 0);
+
     return {
         characterIcon: `assets/character${randomAmount(1, 3)}.png`,
         rewards: [
-            { type: 'coin', amount: randomAmount(50, 100) * playerLevel },
-            { type: 'xp', amount: randomAmount(10, 30) * playerLevel }
+            { type: 'coin', amount: baseCoinReward * playerLevel * totalRewardMultiplier },
+            { type: 'xp', amount: baseXpReward * playerLevel * totalRewardMultiplier }
         ],
         requirements,
     };
