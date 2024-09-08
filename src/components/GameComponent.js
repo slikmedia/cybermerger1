@@ -6,11 +6,11 @@ import 'react-circular-progressbar/dist/styles.css';
 import '../App.css'; // Import the CSS file
 
 const GRID_WIDTH = 7;
-const GRID_HEIGHT = 19;
+const GRID_HEIGHT = 9;
 const CELL_SIZE = 90;
 const MARGIN = 1;
 const EFFECTIVE_CELL_SIZE = CELL_SIZE - 2 * MARGIN;
-const GEM_DROP_CHANCE = 0.9; // 1% chance to drop a gem
+const GEM_DROP_CHANCE = 0.05; // 5% chance to drop a gem
 const GEM_VALUES = [1, 3, 5, 7, 10]; // Gem values for levels 1 to 5
 
 class GameScene extends Phaser.Scene {
@@ -137,6 +137,7 @@ class GameScene extends Phaser.Scene {
                     this.gridItems[spot.y][spot.x] = item;
                     if (this.game.react) {
                         this.game.react.updateQuestProgress(item.type, 1);
+                        this.updateAllQuestProgress();
                     }
                 }
             });
@@ -272,6 +273,10 @@ class GameScene extends Phaser.Scene {
                 this.game.react.updateQuestProgress(item1.type, -1);
                 this.game.react.updateQuestProgress(item2.type, -1);
                 
+                // Give XP based on the new level
+                const xpReward = [1, 3, 5, 7, 10][newLevel - 1];
+                this.game.react.updateXp(xpReward);
+
                 setTimeout(() => {
                     this.updateAllQuestProgress();
                 }, 0);
@@ -472,7 +477,7 @@ const GameComponent = () => {
     const [energy, setEnergy] = useState(100);
     const [xp, setXp] = useState(0);
     const [level, setLevel] = useState(1);
-    const [gems, setGems] = useState(0); // Add state for gems
+    const [gems, setGems] = useState(0);
     const [quests, setQuests] = useState([
         generateRandomQuest(level, []),
         generateRandomQuest(level, []),
@@ -493,15 +498,7 @@ const GameComponent = () => {
         });
 
         setCoins((prevCoins) => prevCoins + claimedQuest.rewards.find(r => r.type === 'coin').amount);
-        setXp((prevXp) => {
-            const newXp = prevXp + claimedQuest.rewards.find(r => r.type === 'xp').amount;
-            const xpNeeded = level * 50 + (level - 1) * 20;
-            if (newXp >= xpNeeded) {
-                setLevel((prevLevel) => prevLevel + 1);
-                return newXp - xpNeeded;
-            }
-            return newXp;
-        });
+        setXp((prevXp) => prevXp + claimedQuest.rewards.find(r => r.type === 'xp').amount);
 
         if (gameRef.current && gameRef.current.scene.scenes[0]) {
             const gameScene = gameRef.current.scene.scenes[0];
@@ -519,9 +516,10 @@ const GameComponent = () => {
             return prevQuests.map((quest) => {
                 const updatedRequirements = quest.requirements.map((req) => {
                     if (req.type === itemType) {
+                        const newCollected = Math.max(0, req.collected + change);
                         return {
                             ...req,
-                            collected: Math.max(0, Math.min(req.required, req.collected + change)),
+                            collected: newCollected,
                         };
                     }
                     return req;
@@ -538,9 +536,10 @@ const GameComponent = () => {
         setQuests((prevQuests) => {
             return prevQuests.map((quest) => {
                 const updatedRequirements = quest.requirements.map((req) => {
+                    const count = itemCounts[req.type] || 0;
                     return {
                         ...req,
-                        collected: Math.min(req.required, itemCounts[req.type] || 0),
+                        collected: Math.min(req.required, count),
                     };
                 });
                 return {
@@ -555,8 +554,12 @@ const GameComponent = () => {
         setEnergy(newEnergy);
     };
 
-    const updateGems = (value) => {
-        setGems(prevGems => prevGems + value);
+    const updateGems = (newGems) => {
+        setGems((prevGems) => prevGems + newGems);
+    };
+
+    const updateXp = (xpGained) => {
+        setXp(prevXp => prevXp + xpGained);
     };
 
     useEffect(() => {
@@ -577,6 +580,7 @@ const GameComponent = () => {
                 updateQuestProgress,
                 updateAllQuestProgress,
                 updateGems,
+                updateXp,
             };
             console.log('Phaser game initialized');
         } catch (error) {
@@ -591,7 +595,15 @@ const GameComponent = () => {
         };
     }, []);
 
-    const xpNeeded = level * 50 + (level - 1) * 20;
+    useEffect(() => {
+        const xpNeeded = level * 50;
+        if (xp >= xpNeeded) {
+            setLevel(prevLevel => prevLevel + 1);
+            setXp(prevXp => prevXp - xpNeeded);
+        }
+    }, [xp, level]);
+
+    const xpNeeded = level * 50;
     const xpPercentage = (xp / xpNeeded) * 100;
 
     return (
