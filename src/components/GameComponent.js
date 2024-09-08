@@ -10,6 +10,8 @@ const GRID_HEIGHT = 19;
 const CELL_SIZE = 90;
 const MARGIN = 1;
 const EFFECTIVE_CELL_SIZE = CELL_SIZE - 2 * MARGIN;
+const GEM_DROP_CHANCE = 0.9; // 1% chance to drop a gem
+const GEM_VALUES = [1, 3, 5, 7, 10]; // Gem values for levels 1 to 5
 
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -18,18 +20,29 @@ class GameScene extends Phaser.Scene {
         this.isGeneratorDragging = false;
         this.generatorMoved = false;
         this.claimSoundTimer = null;
+        this.GEM_VALUES = [1, 3, 5, 7, 10]; // Gem values for levels 1 to 5
     }
 
     preload() {
         this.load.image('generator', 'assets/generator.png');
         for (let i = 1; i <= 5; i++) {
             this.load.image(`level${i}`, `assets/level${i}.png`);
+            this.load.image(`gem${i}`, `assets/gem${i}.png`);
         }
-        this.load.audio('mergeSound', 'assets/merge.mp3');
-        this.load.audio('spawnSound', 'assets/spawn.mp3');
-        this.load.audio('backgroundMusic', 'assets/background_music.mp3');
-        this.load.audio('questCompleteSound', 'assets/quest_complete.mp3');
-        this.load.audio('claimQuestSound', 'assets/claim_quest.mp3');
+
+        // Add error handling for audio loading
+        this.load.audio('mergeSound', 'assets/merge.mp3').on('loaderror', this.handleAudioLoadError, this);
+        this.load.audio('spawnSound', 'assets/spawn.mp3').on('loaderror', this.handleAudioLoadError, this);
+        this.load.audio('backgroundMusic', 'assets/background_music.mp3').on('loaderror', this.handleAudioLoadError, this);
+        this.load.audio('questCompleteSound', 'assets/quest_complete.mp3').on('loaderror', this.handleAudioLoadError, this);
+        this.load.audio('claimQuestSound', 'assets/claim_quest.mp3').on('loaderror', this.handleAudioLoadError, this);
+        this.load.audio('gemConsumeSound', 'assets/gem_consume.mp3').on('loaderror', this.handleAudioLoadError, this);
+    }
+
+    handleAudioLoadError(file) {
+        console.error(`Error loading audio file: ${file.key}`);
+        // Optionally, you can set a flag to disable sound if loading fails
+        // this.soundEnabled = false;
     }
 
     create() {
@@ -123,7 +136,7 @@ class GameScene extends Phaser.Scene {
                 onComplete: () => {
                     this.gridItems[spot.y][spot.x] = item;
                     if (this.game.react) {
-                        this.game.react.updateQuestProgress(1);
+                        this.game.react.updateQuestProgress(item.type, 1);
                     }
                 }
             });
@@ -167,7 +180,7 @@ class GameScene extends Phaser.Scene {
                 this.resetPosition(gameObject);
             } else if (this.gridItems[dropPos.y][dropPos.x]) {
                 const otherItem = this.gridItems[dropPos.y][dropPos.x];
-                if (otherItem !== 'generator' && gameObject.level === otherItem.level) {
+                if (otherItem !== 'generator' && gameObject.level === otherItem.level && gameObject.type === otherItem.type) {
                     this.mergeItems(gameObject, otherItem);
                 } else {
                     this.resetPosition(gameObject);
@@ -212,7 +225,7 @@ class GameScene extends Phaser.Scene {
 
     mergeItems(item1, item2) {
         this.sound.play('mergeSound');
-        this.triggerHapticFeedback(item1, item2); // Pass items to the haptic feedback method
+        this.triggerHapticFeedback(item1, item2);
 
         const newLevel = item1.level + 1;
         if (newLevel <= 5) {
@@ -222,13 +235,28 @@ class GameScene extends Phaser.Scene {
             const newItemX = startX + mergePos.x * cellSize + cellSize / 2;
             const newItemY = startY + mergePos.y * cellSize + cellSize / 2;
 
-            const newItem = this.add.image(newItemX, newItemY, `level${newLevel}`);
+            let newItemTexture = item1.type === 'gem' ? `gem${newLevel}` : `level${newLevel}`;
+            const newItem = this.add.image(newItemX, newItemY, newItemTexture);
             newItem.setDisplaySize(cellSize, cellSize);
             newItem.setInteractive({ draggable: true });
             newItem.level = newLevel;
             newItem.gridX = mergePos.x;
             newItem.gridY = mergePos.y;
-            newItem.type = `level${newLevel}`;
+            newItem.type = item1.type === 'gem' ? 'gem' : `level${newLevel}`;
+
+            // Add double-click/tap functionality for gems
+            if (newItem.type === 'gem') {
+                newItem.on('pointerup', () => {
+                    if (newItem.clickCount === 1) {
+                        this.consumeGem(newItem);
+                    } else {
+                        newItem.clickCount = 1;
+                        this.time.delayedCall(300, () => {
+                            newItem.clickCount = 0;
+                        });
+                    }
+                });
+            }
 
             this.gridItems[item1.gridY][item1.gridX] = null;
             this.gridOccupancy[item1.gridY][item1.gridX] = false;
@@ -238,14 +266,90 @@ class GameScene extends Phaser.Scene {
             item2.destroy();
 
             if (this.game.react) {
-                this.game.react.updateQuestProgress(newLevel);
+                // Update quest progress for the new merged item
+                this.game.react.updateQuestProgress(newItem.type, 1);
+                // Decrease quest progress for the two merged items
+                this.game.react.updateQuestProgress(item1.type, -1);
+                this.game.react.updateQuestProgress(item2.type, -1);
+                
                 setTimeout(() => {
                     this.updateAllQuestProgress();
                 }, 0);
             }
+
+            if (item1.type !== 'gem' && Math.random() < GEM_DROP_CHANCE) {
+                this.spawnGemAround(mergePos.x, mergePos.y);
+            }
         } else {
             this.resetPosition(item1);
         }
+    }
+
+    spawnGemAround(x, y) {
+        const { startX, startY, cellSize } = this.gridInfo;
+        const adjacentSpots = [
+            { x: x - 1, y: y },
+            { x: x + 1, y: y },
+            { x: x, y: y - 1 },
+            { x: x, y: y + 1 }
+        ];
+
+        const emptySpots = adjacentSpots.filter(spot => 
+            spot.x >= 0 && spot.x < GRID_WIDTH && 
+            spot.y >= 0 && spot.y < GRID_HEIGHT && 
+            !this.gridOccupancy[spot.y][spot.x]
+        );
+
+        if (emptySpots.length > 0) {
+            const spot = Phaser.Math.RND.pick(emptySpots);
+            const gemX = startX + spot.x * cellSize + cellSize / 2;
+            const gemY = startY + spot.y * cellSize + cellSize / 2;
+
+            const gem = this.add.image(gemX, gemY, 'gem1');
+            gem.setDisplaySize(cellSize, cellSize);
+            gem.setInteractive({ draggable: true });
+            gem.level = 1;
+            gem.gridX = spot.x;
+            gem.gridY = spot.y;
+            gem.type = 'gem';
+
+            // Add double-click/tap functionality
+            gem.on('pointerup', () => {
+                if (gem.clickCount === 1) {
+                    this.consumeGem(gem);
+                } else {
+                    gem.clickCount = 1;
+                    this.time.delayedCall(300, () => {
+                        gem.clickCount = 0;
+                    });
+                }
+            });
+
+            this.gridItems[spot.y][spot.x] = gem;
+            this.gridOccupancy[spot.y][spot.x] = true;
+        }
+    }
+
+    consumeGem(gem) {
+        const gemValue = this.GEM_VALUES[gem.level - 1];
+        
+        // Update player stats
+        if (this.game.react) {
+            this.game.react.updateGems(gemValue);
+        }
+
+        // Remove the gem from the grid
+        this.gridItems[gem.gridY][gem.gridX] = null;
+        this.gridOccupancy[gem.gridY][gem.gridX] = false;
+        gem.destroy();
+
+        // Update quest progress
+        if (this.game.react) {
+            this.game.react.updateQuestProgress(gem.type, -1);
+        }
+
+        // Play a sound effect (optional)
+        this.sound.play('gemConsumeSound');
     }
 
     getGridPosition(item) {
@@ -325,44 +429,41 @@ class GameScene extends Phaser.Scene {
     }
 }
 
-const generateRandomQuest = (playerLevel) => {
+const generateRandomQuest = (playerLevel, existingQuests) => {
     const levels = [1, 2, 3, 4, 5];
     const randomLevel = () => levels[Math.floor(Math.random() * levels.length)];
     const randomAmount = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-    const numRequirements = randomAmount(1, 3);
-    const requirements = [];
+    const generateUniqueQuest = () => {
+        const numRequirements = randomAmount(1, 3);
+        const requirements = [];
 
-    const usedLevels = new Set();
+        for (let i = 0; i < numRequirements; i++) {
+            const level = randomLevel();
+            requirements.push({
+                icon: `assets/level${level}.png`,
+                type: `level${level}`,
+                collected: 0,
+                required: 1 // Ensure only one item is required
+            });
+        }
 
-    for (let i = 0; i < numRequirements; i++) {
-        let level;
-        do {
-            level = randomLevel();
-        } while (usedLevels.has(level));
-
-        usedLevels.add(level);
-
-        requirements.push({
-            icon: `assets/level${level}.png`,
-            type: `level${level}`,
-            collected: 0,
-            required: 1
-        });
-    }
-
-    const baseCoinReward = 10;
-    const baseXpReward = 5;
-    const totalRewardMultiplier = requirements.reduce((acc, req) => acc + req.required * parseInt(req.type.replace('level', '')), 0);
-
-    return {
-        characterIcon: `assets/character${randomAmount(1, 3)}.png`,
-        rewards: [
-            { type: 'coin', amount: baseCoinReward * playerLevel * totalRewardMultiplier },
-            { type: 'xp', amount: baseXpReward * playerLevel * totalRewardMultiplier }
-        ],
-        requirements,
+        return {
+            characterIcon: `assets/character${randomAmount(1, 3)}.png`,
+            rewards: [
+                { type: 'coin', amount: 10 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', '')), 0) },
+                { type: 'xp', amount: 5 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', '')), 0) }
+            ],
+            requirements,
+        };
     };
+
+    let newQuest;
+    do {
+        newQuest = generateUniqueQuest();
+    } while (existingQuests.some(quest => JSON.stringify(quest.requirements) === JSON.stringify(newQuest.requirements)));
+
+    return newQuest;
 };
 
 const GameComponent = () => {
@@ -371,13 +472,14 @@ const GameComponent = () => {
     const [energy, setEnergy] = useState(100);
     const [xp, setXp] = useState(0);
     const [level, setLevel] = useState(1);
+    const [gems, setGems] = useState(0); // Add state for gems
     const [quests, setQuests] = useState([
-        generateRandomQuest(level),
-        generateRandomQuest(level),
-        generateRandomQuest(level), 
-        generateRandomQuest(level),
-        generateRandomQuest(level),
-        generateRandomQuest(level),
+        generateRandomQuest(level, []),
+        generateRandomQuest(level, []),
+        generateRandomQuest(level, []), 
+        generateRandomQuest(level, []),
+        generateRandomQuest(level, []),
+        generateRandomQuest(level, []),
     ]);
 
     const handleQuestClick = (quest) => {
@@ -386,7 +488,7 @@ const GameComponent = () => {
 
     const handleQuestClaim = (claimedQuest) => {
         setQuests((prevQuests) => {
-            const updatedQuests = prevQuests.map(q => q === claimedQuest ? generateRandomQuest(level) : q);
+            const updatedQuests = prevQuests.map(q => q === claimedQuest ? generateRandomQuest(level, prevQuests) : q);
             return updatedQuests;
         });
 
@@ -412,14 +514,14 @@ const GameComponent = () => {
         }
     };
 
-    const updateQuestProgress = (level) => {
+    const updateQuestProgress = (itemType, change) => {
         setQuests((prevQuests) => {
             return prevQuests.map((quest) => {
                 const updatedRequirements = quest.requirements.map((req) => {
-                    if (req.type === `level${level}`) {
+                    if (req.type === itemType) {
                         return {
                             ...req,
-                            collected: Math.min(req.collected + 1, req.required),
+                            collected: Math.max(0, Math.min(req.required, req.collected + change)),
                         };
                     }
                     return req;
@@ -432,29 +534,29 @@ const GameComponent = () => {
         });
     };
 
-    const updateAllQuestProgress = (itemCounts = {}) => {
-        setQuests(prevQuests => prevQuests.map(quest => {
-            const updatedQuest = {
-                ...quest,
-                requirements: quest.requirements.map(req => ({
-                    ...req,
-                    collected: Math.min(itemCounts[req.type] || 0, req.required)
-                }))
-            };
-            
-            // Check if the quest is completed and play the claim sound
-            if (updatedQuest.requirements.every(req => req.collected >= req.required)) {
-                if (gameRef.current && gameRef.current.scene.scenes[0]) {
-                    gameRef.current.scene.scenes[0].playClaimQuestSound();
-                }
-            }
-            
-            return updatedQuest;
-        }));
+    const updateAllQuestProgress = (itemCounts) => {
+        setQuests((prevQuests) => {
+            return prevQuests.map((quest) => {
+                const updatedRequirements = quest.requirements.map((req) => {
+                    return {
+                        ...req,
+                        collected: Math.min(req.required, itemCounts[req.type] || 0),
+                    };
+                });
+                return {
+                    ...quest,
+                    requirements: updatedRequirements,
+                };
+            });
+        });
     };
 
     const updateEnergy = (newEnergy) => {
         setEnergy(newEnergy);
+    };
+
+    const updateGems = (value) => {
+        setGems(prevGems => prevGems + value);
     };
 
     useEffect(() => {
@@ -474,6 +576,7 @@ const GameComponent = () => {
                 updateEnergy,
                 updateQuestProgress,
                 updateAllQuestProgress,
+                updateGems,
             };
             console.log('Phaser game initialized');
         } catch (error) {
@@ -501,7 +604,7 @@ const GameComponent = () => {
                         className="circular-progressbar"
                     />
                 </div>
-                🪙 {coins} ⚡ {energy}  💎 XX
+                🪙 {coins} ⚡ {energy} 💎 {gems}
             </div>
             <QuestPanel quests={quests} onQuestClick={handleQuestClick} onQuestClaim={handleQuestClaim} />
             <div id="phaser-game"></div>
