@@ -273,9 +273,11 @@ class GameScene extends Phaser.Scene {
                 this.game.react.updateQuestProgress(item1.type, -1);
                 this.game.react.updateQuestProgress(item2.type, -1);
                 
-                // Give XP based on the new level
-                const xpReward = [1, 3, 5, 7, 10][newLevel - 1];
-                this.game.react.updateXp(xpReward);
+                // Give XP based on the new level and player level
+                const baseXpReward = [1, 3, 5, 7, 10][newLevel - 1];
+                const playerLevel = this.game.react.getPlayerLevel();
+                const scaledXpReward = Math.floor(baseXpReward * Math.sqrt(playerLevel));
+                this.game.react.updateXp(scaledXpReward);
 
                 setTimeout(() => {
                     this.updateAllQuestProgress();
@@ -562,6 +564,10 @@ const GameComponent = () => {
         setXp(prevXp => prevXp + xpGained);
     };
 
+    const getPlayerLevel = () => {
+        return level;
+    };
+
     useEffect(() => {
         const config = {
             type: Phaser.AUTO,
@@ -581,6 +587,7 @@ const GameComponent = () => {
                 updateAllQuestProgress,
                 updateGems,
                 updateXp,
+                getPlayerLevel,
             };
             console.log('Phaser game initialized');
         } catch (error) {
@@ -596,14 +603,14 @@ const GameComponent = () => {
     }, []);
 
     useEffect(() => {
-        const xpNeeded = level * 50;
+        const xpNeeded = Math.floor(50 * Math.pow(level, 1.5));
         if (xp >= xpNeeded) {
             setLevel(prevLevel => prevLevel + 1);
             setXp(prevXp => prevXp - xpNeeded);
         }
     }, [xp, level]);
 
-    const xpNeeded = level * 50;
+    const xpNeeded = Math.floor(50 * Math.pow(level, 1.5));
     const xpPercentage = (xp / xpNeeded) * 100;
 
     return (
