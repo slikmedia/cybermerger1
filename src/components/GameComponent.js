@@ -11,7 +11,6 @@ const CELL_SIZE = 90;
 const MARGIN = 1;
 const EFFECTIVE_CELL_SIZE = CELL_SIZE - 2 * MARGIN;
 const GEM_DROP_CHANCE = 0.05; // 5% chance to drop a gem
-const GEM_VALUES = [1, 3, 5, 7, 10]; // Gem values for levels 1 to 5
 
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -20,7 +19,6 @@ class GameScene extends Phaser.Scene {
         this.isGeneratorDragging = false;
         this.generatorMoved = false;
         this.claimSoundTimer = null;
-        this.GEM_VALUES = [1, 3, 5, 7, 10]; // Gem values for levels 1 to 5
     }
 
     preload() {
@@ -338,7 +336,7 @@ class GameScene extends Phaser.Scene {
     }
 
     consumeGem(gem) {
-        const gemValue = this.GEM_VALUES[gem.level - 1];
+        const gemValue = [1, 3, 5, 7, 10][gem.level - 1];
         
         // Update player stats
         if (this.game.react) {
