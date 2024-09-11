@@ -454,7 +454,7 @@ const generateRandomQuest = (playerLevel, existingQuests) => {
         }
 
         return {
-            characterIcon: `assets/character${randomAmount(1, 3)}.png`,
+            characterIcon: `assets/characters/character${randomAmount(1, 61)}.png`,
             rewards: [
                 { type: 'coin', amount: 10 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', '')), 0) },
                 { type: 'xp', amount: 5 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', '')), 0) }

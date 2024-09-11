@@ -37,11 +37,11 @@
 
 .character-icon {
     width: auto;
-    height: 150px;
+    max-width: 120px;
 }
 .quest-info {
     background: #000;
-    margin-top: -50px;
+    margin-top: -20px;
     padding: 10px;
     min-width: 100px;
     border-radius: 8px;
@@ -149,7 +149,7 @@ body .circular-progressbar .CircularProgressbar-text {
 
 @media (min-width: 1024px) {
     .character-icon {
-        height: 180px;
+        max-width: 120px;
     }
 
     .quest {
