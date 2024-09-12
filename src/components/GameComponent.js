@@ -57,7 +57,7 @@ class GameScene extends Phaser.Scene {
                 const cellY = startY + y * CELL_SIZE + MARGIN;
                 const cell = this.add.rectangle(cellX, cellY, EFFECTIVE_CELL_SIZE, EFFECTIVE_CELL_SIZE, 0x000000);
                 cell.setOrigin(0, 0);
-                cell.setAlpha(0.3);
+                cell.setAlpha(0.5);
             }
         }
 
@@ -439,6 +439,13 @@ const generateRandomQuest = (playerLevel, existingQuests) => {
     const randomLevel = () => levels[Math.floor(Math.random() * levels.length)];
     const randomAmount = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
+    // Create a pool of all available characters
+    const allCharacters = Array.from({ length: 61 }, (_, i) => `assets/characters/character${i + 1}.png`);
+    
+    // Filter out characters already in use
+    const usedCharacters = existingQuests.map(quest => quest.characterIcon);
+    const availableCharacters = allCharacters.filter(char => !usedCharacters.includes(char));
+
     const generateUniqueQuest = () => {
         const numRequirements = randomAmount(1, 3);
         const requirements = [];
@@ -449,12 +456,15 @@ const generateRandomQuest = (playerLevel, existingQuests) => {
                 icon: `assets/level${level}.png`,
                 type: `level${level}`,
                 collected: 0,
-                required: 1 // Ensure only one item is required
+                required: 1
             });
         }
 
+        // Select a random character from the available characters
+        const characterIcon = availableCharacters[Math.floor(Math.random() * availableCharacters.length)];
+
         return {
-            characterIcon: `assets/characters/character${randomAmount(1, 61)}.png`,
+            characterIcon,
             rewards: [
                 { type: 'coin', amount: 10 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', '')), 0) },
                 { type: 'xp', amount: 5 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', '')), 0) }
@@ -478,14 +488,13 @@ const GameComponent = () => {
     const [xp, setXp] = useState(0);
     const [level, setLevel] = useState(1);
     const [gems, setGems] = useState(0);
-    const [quests, setQuests] = useState([
-        generateRandomQuest(level, []),
-        generateRandomQuest(level, []),
-        generateRandomQuest(level, []), 
-        generateRandomQuest(level, []),
-        generateRandomQuest(level, []),
-        generateRandomQuest(level, []),
-    ]);
+    const [quests, setQuests] = useState(() => {
+        const initialQuests = [];
+        for (let i = 0; i < 6; i++) {
+            initialQuests.push(generateRandomQuest(level, initialQuests));
+        }
+        return initialQuests;
+    });
 
     const handleQuestClick = (quest) => {
         console.log('Quest clicked:', quest);
