@@ -345,7 +345,7 @@ class GameScene extends Phaser.Scene {
 
         // Update player stats
         if (this.game.react) {
-            this.game.react.updateGems(gemValue);
+            this.game.react.updateGems(prevGems => prevGems + gemValue);
         }
 
         // Remove the gem from the grid
