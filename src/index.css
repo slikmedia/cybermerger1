@@ -10,7 +10,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   background-size: cover;
-  background-position: center;
+  background-position: center bottom;
   background-repeat: no-repeat;
 }
 

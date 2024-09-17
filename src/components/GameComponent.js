@@ -26,6 +26,7 @@ class GameScene extends Phaser.Scene {
         for (let i = 1; i <= 5; i++) {
             this.load.image(`level${i}`, `assets/level${i}.png`);
             this.load.image(`gem${i}`, `assets/gem${i}.png`);
+            this.load.image(`energy${i}`, `assets/energy${i}.png`);
         }
 
         // Add error handling for audio loading
@@ -145,6 +146,7 @@ class GameScene extends Phaser.Scene {
                 this.game.react.updateEnergy(this.energy);
             }
         }
+        this.updateAllQuestProgress();
     }
 
     onDragStart(pointer, gameObject) {
@@ -181,6 +183,7 @@ class GameScene extends Phaser.Scene {
                 const otherItem = this.gridItems[dropPos.y][dropPos.x];
                 if (otherItem !== 'generator' && gameObject.level === otherItem.level && gameObject.type === otherItem.type) {
                     this.mergeItems(gameObject, otherItem);
+                    this.updateAllQuestProgress();
                 } else {
                     this.resetPosition(gameObject);
                 }
@@ -220,6 +223,7 @@ class GameScene extends Phaser.Scene {
         item.gridY = newPos.y;
         item.x = startX + newPos.x * cellSize + cellSize / 2;
         item.y = startY + newPos.y * cellSize + cellSize / 2;
+        this.updateAllQuestProgress();
     }
 
     mergeItems(item1, item2) {
@@ -270,7 +274,7 @@ class GameScene extends Phaser.Scene {
                 // Decrease quest progress for the two merged items
                 this.game.react.updateQuestProgress(item1.type, -1);
                 this.game.react.updateQuestProgress(item2.type, -1);
-                
+
                 // Give XP based on the new level and player level
                 const baseXpReward = [1, 3, 5, 7, 10][newLevel - 1];
                 const playerLevel = this.game.react.getPlayerLevel();
@@ -299,9 +303,9 @@ class GameScene extends Phaser.Scene {
             { x: x, y: y + 1 }
         ];
 
-        const emptySpots = adjacentSpots.filter(spot => 
-            spot.x >= 0 && spot.x < GRID_WIDTH && 
-            spot.y >= 0 && spot.y < GRID_HEIGHT && 
+        const emptySpots = adjacentSpots.filter(spot =>
+            spot.x >= 0 && spot.x < GRID_WIDTH &&
+            spot.y >= 0 && spot.y < GRID_HEIGHT &&
             !this.gridOccupancy[spot.y][spot.x]
         );
 
@@ -322,6 +326,7 @@ class GameScene extends Phaser.Scene {
             gem.on('pointerup', () => {
                 if (gem.clickCount === 1) {
                     this.consumeGem(gem);
+                    this.updateAllQuestProgress();
                 } else {
                     gem.clickCount = 1;
                     this.time.delayedCall(300, () => {
@@ -337,7 +342,7 @@ class GameScene extends Phaser.Scene {
 
     consumeGem(gem) {
         const gemValue = [1, 3, 5, 7, 10][gem.level - 1];
-        
+
         // Update player stats
         if (this.game.react) {
             this.game.react.updateGems(gemValue);
@@ -403,7 +408,7 @@ class GameScene extends Phaser.Scene {
         if (this.claimSoundTimer) {
             clearTimeout(this.claimSoundTimer);
         }
-        
+
         this.claimSoundTimer = setTimeout(() => {
             this.sound.play('claimQuestSound');
             this.claimSoundTimer = null;
@@ -423,14 +428,7 @@ class GameScene extends Phaser.Scene {
     shakeScreen(item1, item2) {
         this.cameras.main.shake(100, 0.005); // Increase duration and intensity
 
-        // Add a quick scale up and down effect
-        this.tweens.add({
-            targets: [item1, item2],
-            scaleX: 1.2,
-            scaleY: 1.2,
-            duration: 100,
-            yoyo: true
-        });
+        // Remove the scale up and down effect
     }
 }
 
@@ -441,7 +439,7 @@ const generateRandomQuest = (playerLevel, existingQuests) => {
 
     // Create a pool of all available characters
     const allCharacters = Array.from({ length: 61 }, (_, i) => `assets/characters/character${i + 1}.png`);
-    
+
     // Filter out characters already in use
     const usedCharacters = existingQuests.map(quest => quest.characterIcon);
     const availableCharacters = allCharacters.filter(char => !usedCharacters.includes(char));
@@ -449,14 +447,25 @@ const generateRandomQuest = (playerLevel, existingQuests) => {
     const generateUniqueQuest = () => {
         const numRequirements = randomAmount(1, 3);
         const requirements = [];
+        const usedTypes = new Set();
 
         for (let i = 0; i < numRequirements; i++) {
-            const level = randomLevel();
+            let level;
+            let type;
+            // Ensure unique requirement types within the quest
+            do {
+                level = randomLevel();
+                type = `level${level}`;
+            } while (usedTypes.has(type));
+
+            usedTypes.add(type);
+
+            const requiredAmount = Math.floor(Math.random() * 2) + 1; // 1 or 2
             requirements.push({
                 icon: `assets/level${level}.png`,
                 type: `level${level}`,
                 collected: 0,
-                required: 1
+                required: requiredAmount
             });
         }
 
@@ -466,8 +475,8 @@ const generateRandomQuest = (playerLevel, existingQuests) => {
         return {
             characterIcon,
             rewards: [
-                { type: 'coin', amount: 10 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', '')), 0) },
-                { type: 'xp', amount: 5 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', '')), 0) }
+                { type: 'coin', amount: 10 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', ''), 10), 0) },
+                { type: 'xp', amount: 5 * playerLevel * requirements.reduce((acc, req) => acc + parseInt(req.type.replace('level', ''), 10), 0) }
             ],
             requirements,
         };
@@ -476,7 +485,13 @@ const generateRandomQuest = (playerLevel, existingQuests) => {
     let newQuest;
     do {
         newQuest = generateUniqueQuest();
-    } while (existingQuests.some(quest => JSON.stringify(quest.requirements) === JSON.stringify(newQuest.requirements)));
+    } while (existingQuests.some(quest =>
+        quest.requirements.length === newQuest.requirements.length &&
+        quest.requirements.every((req, idx) =>
+            req.type === newQuest.requirements[idx].type &&
+            req.required === newQuest.requirements[idx].required
+        )
+    ));
 
     return newQuest;
 };
@@ -564,7 +579,7 @@ const GameComponent = () => {
     };
 
     const updateGems = (newGems) => {
-        setGems((prevGems) => prevGems + newGems);
+        setGems(newGems);
     };
 
     const updateXp = (xpGained) => {
@@ -583,6 +598,12 @@ const GameComponent = () => {
             parent: 'phaser-game',
             scene: GameScene,
             transparent: true,
+            render: {
+                pixelArt: false,
+                antialias: true,
+                antialiasGL: true,
+                roundPixels: true,
+            },
         };
 
         try {
