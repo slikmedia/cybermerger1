@@ -5,12 +5,14 @@ import { CircularProgressbar } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import '../App.css'; // Import the CSS file
 
+// Constants for grid configuration
 const GRID_WIDTH = 7;
 const GRID_HEIGHT = 9;
 const CELL_SIZE = 90;
 const MARGIN = 1;
 const EFFECTIVE_CELL_SIZE = CELL_SIZE - 2 * MARGIN;
 const GEM_DROP_CHANCE = 0.05; // 5% chance to drop a gem
+const LOCKED_CELL_COUNT = 60; // Number of locked cells
 
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -22,6 +24,7 @@ class GameScene extends Phaser.Scene {
     }
 
     preload() {
+        // Load images for generator, levels, gems, energy, and locked cells
         this.load.image('generator', 'assets/generator.png');
         for (let i = 1; i <= 5; i++) {
             this.load.image(`level${i}`, `assets/level${i}.png`);
@@ -29,7 +32,10 @@ class GameScene extends Phaser.Scene {
             this.load.image(`energy${i}`, `assets/energy${i}.png`);
         }
 
-        // Add error handling for audio loading
+        // Preload the locked item image
+        this.load.image('locked', 'assets/locked.png');
+
+        // Load audio files with error handling
         this.load.audio('mergeSound', 'assets/merge.mp3').on('loaderror', this.handleAudioLoadError, this);
         this.load.audio('spawnSound', 'assets/spawn.mp3').on('loaderror', this.handleAudioLoadError, this);
         this.load.audio('backgroundMusic', 'assets/background_music.mp3').on('loaderror', this.handleAudioLoadError, this);
@@ -40,18 +46,21 @@ class GameScene extends Phaser.Scene {
 
     handleAudioLoadError(file) {
         console.error(`Error loading audio file: ${file.key}`);
-        // Optionally, you can set a flag to disable sound if loading fails
+        // Optionally, disable sound if loading fails
         // this.soundEnabled = false;
     }
 
     create() {
+        // Calculate starting X and Y positions to center the grid
         const startX = (this.sys.game.config.width - GRID_WIDTH * CELL_SIZE) / 2;
         const startY = (this.sys.game.config.height - GRID_HEIGHT * CELL_SIZE) / 2;
 
+        // Initialize grid information
         this.gridInfo = { startX, startY, gridWidth: GRID_WIDTH, gridHeight: GRID_HEIGHT, cellSize: CELL_SIZE };
         this.gridOccupancy = Array(GRID_HEIGHT).fill(null).map(() => Array(GRID_WIDTH).fill(false));
         this.gridItems = Array(GRID_HEIGHT).fill(null).map(() => Array(GRID_WIDTH).fill(null));
 
+        // Draw the grid cells
         for (let y = 0; y < GRID_HEIGHT; y++) {
             for (let x = 0; x < GRID_WIDTH; x++) {
                 const cellX = startX + x * CELL_SIZE + MARGIN;
@@ -62,6 +71,7 @@ class GameScene extends Phaser.Scene {
             }
         }
 
+        // Place the generator in the center of the grid
         const centerX = startX + Math.floor(GRID_WIDTH / 2) * CELL_SIZE + CELL_SIZE / 2;
         const centerY = startY + Math.floor(GRID_HEIGHT / 2) * CELL_SIZE + CELL_SIZE / 2;
         const generator = this.add.image(centerX, centerY, 'generator');
@@ -69,22 +79,66 @@ class GameScene extends Phaser.Scene {
         generator.setInteractive({ draggable: true });
         generator.on('pointerup', this.spawnItem, this);
 
+        // Assign generator's grid position
         this.generator = generator;
         this.generator.gridX = Math.floor(GRID_WIDTH / 2);
         this.generator.gridY = Math.floor(GRID_HEIGHT / 2);
         this.gridItems[this.generator.gridY][this.generator.gridX] = 'generator';
         this.gridOccupancy[this.generator.gridY][this.generator.gridX] = true;
 
+        // Enable dragging for the generator
         this.input.setDraggable(generator);
         this.input.on('dragstart', this.onDragStart, this);
         this.input.on('drag', this.onDrag, this);
         this.input.on('dragend', this.onDragEnd, this);
 
+        // Initialize and play background music
         this.backgroundMusic = this.sound.add('backgroundMusic', { loop: true, volume: 0.5 });
         this.backgroundMusic.play();
 
         // Initialize haptic feedback
         this.initHapticFeedback();
+
+        // Initialize Locked Cells
+        this.initializeLockedCells(startX, startY);
+    }
+
+    initializeLockedCells(startX, startY) {
+        const lockedCellCount = LOCKED_CELL_COUNT;
+        const generatorX = this.generator.gridX;
+        const generatorY = this.generator.gridY;
+
+        // Generate a list of all cell positions excluding the generator's position
+        let availableCells = [];
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                if (!(x === generatorX && y === generatorY)) {
+                    availableCells.push({ x, y });
+                }
+            }
+        }
+
+        // Shuffle the available cells for randomness
+        Phaser.Utils.Array.Shuffle(availableCells);
+
+        // Select the first 60 cells to lock
+        const lockedCells = availableCells.slice(0, lockedCellCount);
+
+        // Place locked items on the selected cells
+        lockedCells.forEach(cell => {
+            const itemX = startX + cell.x * CELL_SIZE + CELL_SIZE / 2;
+            const itemY = startY + cell.y * CELL_SIZE + CELL_SIZE / 2;
+            const lockedItem = this.add.image(itemX, itemY, 'locked');
+            lockedItem.setDisplaySize(EFFECTIVE_CELL_SIZE, EFFECTIVE_CELL_SIZE);
+            lockedItem.isLocked = true; // Flag to indicate it's locked
+            lockedItem.type = 'locked'; // Type identifier
+
+            // Locked items are not interactive
+            // Ensure locked items are visually distinct
+
+            this.gridItems[cell.y][cell.x] = lockedItem;
+            this.gridOccupancy[cell.y][cell.x] = true;
+        });
     }
 
     spawnItem() {
@@ -95,6 +149,7 @@ class GameScene extends Phaser.Scene {
         const generatorX = this.generator.gridX;
         const generatorY = this.generator.gridY;
 
+        // Find all empty cells where items can be spawned
         for (let y = 0; y < gridHeight; y++) {
             for (let x = 0; x < gridWidth; x++) {
                 if (!this.gridItems[y][x] && !this.gridOccupancy[y][x]) {
@@ -107,6 +162,7 @@ class GameScene extends Phaser.Scene {
         if (emptySpots.length > 0) {
             this.sound.play('spawnSound');
 
+            // Sort spots based on distance from the generator
             emptySpots.sort((a, b) => a.distance - b.distance);
             const closestSpots = emptySpots.slice(0, Math.min(3, emptySpots.length));
             const spot = Phaser.Math.RND.pick(closestSpots);
@@ -126,6 +182,7 @@ class GameScene extends Phaser.Scene {
             item.gridY = spot.y;
             item.type = 'level1';
 
+            // Tween to animate the item moving to its position
             this.tweens.add({
                 targets: item,
                 x: itemX,
@@ -150,6 +207,9 @@ class GameScene extends Phaser.Scene {
     }
 
     onDragStart(pointer, gameObject) {
+        // Prevent dragging if the item is locked
+        if (gameObject.isLocked) return;
+
         this.children.bringToTop(gameObject);
         if (gameObject === this.generator) {
             this.isGeneratorDragging = true;
@@ -158,6 +218,9 @@ class GameScene extends Phaser.Scene {
     }
 
     onDrag(pointer, gameObject, dragX, dragY) {
+        // Prevent dragging if the item is locked
+        if (gameObject.isLocked) return;
+
         gameObject.x = dragX;
         gameObject.y = dragY;
         if (gameObject === this.generator) {
@@ -166,6 +229,12 @@ class GameScene extends Phaser.Scene {
     }
 
     onDragEnd(pointer, gameObject) {
+        // Prevent any actions if the item is locked
+        if (gameObject.isLocked) {
+            this.resetPosition(gameObject);
+            return;
+        }
+
         const dropPos = this.getGridPosition(gameObject);
         const startPos = { x: gameObject.gridX, y: gameObject.gridY };
 
@@ -181,7 +250,8 @@ class GameScene extends Phaser.Scene {
                 this.resetPosition(gameObject);
             } else if (this.gridItems[dropPos.y][dropPos.x]) {
                 const otherItem = this.gridItems[dropPos.y][dropPos.x];
-                if (otherItem !== 'generator' && gameObject.level === otherItem.level && gameObject.type === otherItem.type) {
+                // Prevent merging with locked items
+                if (otherItem !== 'generator' && !otherItem.isLocked && gameObject.level === otherItem.level && gameObject.type === otherItem.type) {
                     this.mergeItems(gameObject, otherItem);
                     this.updateAllQuestProgress();
                 } else {
@@ -227,6 +297,9 @@ class GameScene extends Phaser.Scene {
     }
 
     mergeItems(item1, item2) {
+        // Prevent merging if any item is locked
+        if (item1.isLocked || item2.isLocked) return;
+
         this.sound.play('mergeSound');
         this.triggerHapticFeedback(item1, item2);
 
@@ -252,6 +325,7 @@ class GameScene extends Phaser.Scene {
                 newItem.on('pointerup', () => {
                     if (newItem.clickCount === 1) {
                         this.consumeGem(newItem);
+                        this.updateAllQuestProgress();
                     } else {
                         newItem.clickCount = 1;
                         this.time.delayedCall(300, () => {
@@ -261,6 +335,7 @@ class GameScene extends Phaser.Scene {
                 });
             }
 
+            // Update grid occupancy
             this.gridItems[item1.gridY][item1.gridX] = null;
             this.gridOccupancy[item1.gridY][item1.gridX] = false;
             this.gridItems[mergePos.y][mergePos.x] = newItem;
@@ -286,11 +361,52 @@ class GameScene extends Phaser.Scene {
                 }, 0);
             }
 
+            // 5% chance to drop a gem if not merging a gem
             if (item1.type !== 'gem' && Math.random() < GEM_DROP_CHANCE) {
                 this.spawnGemAround(mergePos.x, mergePos.y);
             }
+
+            // *** Dynamic Unlocking: Unlock a nearby locked cell ***
+            this.unlockNearbyLockedCell(mergePos.x, mergePos.y);
         } else {
             this.resetPosition(item1);
+        }
+    }
+
+    unlockNearbyLockedCell(x, y) {
+        // Define all 8 surrounding positions
+        const adjacentPositions = [
+            { x: x - 1, y: y - 1 },
+            { x: x, y: y - 1 },
+            { x: x + 1, y: y - 1 },
+            { x: x - 1, y: y },
+            { x: x + 1, y: y },
+            { x: x - 1, y: y + 1 },
+            { x: x, y: y + 1 },
+            { x: x + 1, y: y + 1 }
+        ];
+
+        // Filter positions within grid bounds and that are locked
+        const lockedAdjacentCells = adjacentPositions.filter(pos =>
+            pos.x >= 0 && pos.x < GRID_WIDTH &&
+            pos.y >= 0 && pos.y < GRID_HEIGHT &&
+            this.gridItems[pos.y][pos.x] &&
+            this.gridItems[pos.y][pos.x].isLocked
+        );
+
+        if (lockedAdjacentCells.length > 0) {
+            // Randomly select one locked cell to unlock
+            const cellToUnlock = Phaser.Math.RND.pick(lockedAdjacentCells);
+            const { x: unlockX, y: unlockY } = cellToUnlock;
+
+            // Remove the locked item from the grid
+            const lockedItem = this.gridItems[unlockY][unlockX];
+            if (lockedItem) {
+                lockedItem.destroy();
+                this.gridItems[unlockY][unlockX] = null;
+                this.gridOccupancy[unlockY][unlockX] = false;
+                console.log(`Unlocked cell at (${unlockX}, ${unlockY})`);
+            }
         }
     }
 
@@ -343,7 +459,7 @@ class GameScene extends Phaser.Scene {
     consumeGem(gem) {
         const gemValue = [1, 3, 5, 7, 10][gem.level - 1];
 
-        // Update player stats
+        // Update player gems
         if (this.game.react) {
             this.game.react.updateGems(prevGems => prevGems + gemValue);
         }
@@ -358,7 +474,7 @@ class GameScene extends Phaser.Scene {
             this.game.react.updateQuestProgress(gem.type, -1);
         }
 
-        // Play a sound effect (optional)
+        // Play a sound effect
         this.sound.play('gemConsumeSound');
     }
 
@@ -389,7 +505,7 @@ class GameScene extends Phaser.Scene {
         const itemCounts = {};
         this.gridItems.forEach(row => {
             row.forEach(item => {
-                if (item && item.type) {
+                if (item && item.type && item.type !== 'locked') { // Exclude locked items
                     itemCounts[item.type] = (itemCounts[item.type] || 0) + 1;
                 }
             });
@@ -415,10 +531,10 @@ class GameScene extends Phaser.Scene {
         }, 100);
     }
 
-    // Updated haptic feedback methods
+    // Haptic feedback methods
 
     initHapticFeedback() {
-        // No initialization needed for this version
+        // Initialization for haptic feedback if needed
     }
 
     triggerHapticFeedback(item1, item2) {
@@ -427,11 +543,10 @@ class GameScene extends Phaser.Scene {
 
     shakeScreen(item1, item2) {
         this.cameras.main.shake(100, 0.005); // Increase duration and intensity
-
-        // Remove the scale up and down effect
     }
 }
 
+// Function to generate a random quest
 const generateRandomQuest = (playerLevel, existingQuests) => {
     const levels = [1, 2, 3, 4, 5];
     const randomLevel = () => levels[Math.floor(Math.random() * levels.length)];
@@ -496,6 +611,7 @@ const generateRandomQuest = (playerLevel, existingQuests) => {
     return newQuest;
 };
 
+// React Component for the Game
 const GameComponent = () => {
     const gameRef = useRef(null);
     const [coins, setCoins] = useState(0);
@@ -511,10 +627,12 @@ const GameComponent = () => {
         return initialQuests;
     });
 
+    // Handle quest click (e.g., show details)
     const handleQuestClick = (quest) => {
         console.log('Quest clicked:', quest);
     };
 
+    // Handle quest claim (e.g., reward the player)
     const handleQuestClaim = (claimedQuest) => {
         setQuests((prevQuests) => {
             const updatedQuests = prevQuests.map(q => q === claimedQuest ? generateRandomQuest(level, prevQuests) : q);
@@ -535,6 +653,7 @@ const GameComponent = () => {
         }
     };
 
+    // Update quest progress when items are spawned or merged
     const updateQuestProgress = (itemType, change) => {
         setQuests((prevQuests) => {
             return prevQuests.map((quest) => {
@@ -556,6 +675,7 @@ const GameComponent = () => {
         });
     };
 
+    // Update all quest progress based on current grid items
     const updateAllQuestProgress = (itemCounts) => {
         setQuests((prevQuests) => {
             return prevQuests.map((quest) => {
@@ -574,22 +694,27 @@ const GameComponent = () => {
         });
     };
 
+    // Update player energy
     const updateEnergy = (newEnergy) => {
         setEnergy(newEnergy);
     };
 
+    // Update player gems
     const updateGems = (newGems) => {
         setGems(newGems);
     };
 
+    // Update player XP
     const updateXp = (xpGained) => {
         setXp(prevXp => prevXp + xpGained);
     };
 
+    // Get player level
     const getPlayerLevel = () => {
         return level;
     };
 
+    // Initialize Phaser game on component mount
     useEffect(() => {
         const config = {
             type: Phaser.AUTO,
@@ -622,6 +747,7 @@ const GameComponent = () => {
             console.error('Error initializing Phaser game:', error);
         }
 
+        // Cleanup Phaser game on component unmount
         return () => {
             if (gameRef.current) {
                 gameRef.current.destroy(true);
@@ -630,6 +756,7 @@ const GameComponent = () => {
         };
     }, []);
 
+    // Handle player level up based on XP
     useEffect(() => {
         const xpNeeded = Math.floor(50 * Math.pow(level, 1.5));
         if (xp >= xpNeeded) {
