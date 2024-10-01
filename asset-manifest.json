@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/mergegame-2-3/static/css/main.b77869ff.css",
+    "main.js": "/mergegame-2-3/static/js/main.1b4dc6c3.js",
+    "index.html": "/mergegame-2-3/index.html",
+    "main.b77869ff.css.map": "/mergegame-2-3/static/css/main.b77869ff.css.map",
+    "main.1b4dc6c3.js.map": "/mergegame-2-3/static/js/main.1b4dc6c3.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.b77869ff.css",
+    "static/js/main.1b4dc6c3.js"
+  ]
+}
